@@ -1,0 +1,6 @@
+{
+  "name": "Matillion to Databricks PySpark Converter",
+  "description": "Convert Matillion ETL orchestration and transformation jobs into modern Databricks PySpark notebooks, Delta Live Tables, and Databricks Asset Bundles with interactive DAG lineage and samples.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
