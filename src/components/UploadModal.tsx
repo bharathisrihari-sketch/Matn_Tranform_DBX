@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { X, UploadCloud, FileText, AlertCircle, CheckCircle } from 'lucide-react';
+import { X, UploadCloud, FileText, AlertCircle, CheckCircle, Archive, ArrowRight } from 'lucide-react';
+import JSZip from 'jszip';
 import { MatillionJob } from '../types/matillion';
 
 interface UploadModalProps {
@@ -15,13 +16,98 @@ export const UploadModal: React.FC<UploadModalProps> = ({
 }) => {
   const [jsonText, setJsonText] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [isProcessingZip, setIsProcessingZip] = useState(false);
+  const [extractedZipJobs, setExtractedZipJobs] = useState<MatillionJob[]>([]);
 
   if (!isOpen) return null;
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setError(null);
+    setExtractedZipJobs([]);
+
+    // Check if it's a ZIP archive
+    if (file.name.toLowerCase().endsWith('.zip')) {
+      setIsProcessingZip(true);
+      try {
+        const zip = await JSZip.loadAsync(file);
+        const discovered: MatillionJob[] = [];
+
+        for (const [path, entry] of Object.entries(zip.files)) {
+          if (!entry.dir && path.toLowerCase().endsWith('.json') && !path.includes('manifest.json')) {
+            try {
+              const text = await entry.async('string');
+              const parsed = JSON.parse(text);
+              if (parsed.components && Array.isArray(parsed.components)) {
+                discovered.push({
+                  id: parsed.id || `zip-${Date.now()}-${discovered.length}`,
+                  name: parsed.name || path.replace(/^.*[\\/]/, '').replace('.json', ''),
+                  jobType: parsed.jobType || (parsed.name?.toLowerCase().includes('orch') ? 'Orchestration' : 'Transformation'),
+                  description: parsed.description || `Extracted from ${path}`,
+                  targetPlatform: parsed.targetPlatform || 'Snowflake',
+                  variables: parsed.variables || [],
+                  components: parsed.components,
+                  links: parsed.links || []
+                });
+              } else if (parsed.objects && Array.isArray(parsed.objects)) {
+                const comps = parsed.objects
+                  .filter((o: any) => o.type === 'component')
+                  .map((o: any, idx: number) => ({
+                    id: o.id || `c-${idx}`,
+                    name: o.name || `Component_${idx}`,
+                    type: o.componentType || 'Calculator',
+                    category: 'Transform' as const,
+                    parameters: o.configuration || {},
+                    x: 100 + (idx % 4) * 220,
+                    y: 100 + Math.floor(idx / 4) * 160
+                  }));
+                const links = parsed.objects
+                  .filter((o: any) => o.type === 'link')
+                  .map((o: any, idx: number) => ({
+                    id: o.id || `l-${idx}`,
+                    fromId: o.sourceComponentId,
+                    toId: o.targetComponentId,
+                    condition: o.condition || 'AUTO'
+                  }));
+
+                discovered.push({
+                  id: `native-${Date.now()}-${discovered.length}`,
+                  name: parsed.name || path.replace(/^.*[\\/]/, '').replace('.json', ''),
+                  jobType: parsed.jobType || 'Transformation',
+                  description: parsed.description || 'Imported Matillion project object',
+                  variables: [],
+                  components: comps,
+                  links: links
+                });
+              }
+            } catch (jsonErr) {
+              console.warn(`Could not parse ${path} in ZIP`, jsonErr);
+            }
+          }
+        }
+
+        if (discovered.length === 0) {
+          throw new Error('No valid Matillion JSON files found inside the uploaded ZIP folder.');
+        }
+
+        if (discovered.length === 1) {
+          onImportJob(discovered[0]);
+          onClose();
+          return;
+        }
+
+        setExtractedZipJobs(discovered);
+      } catch (zipErr: any) {
+        setError(zipErr.message || 'Failed to unpack ZIP archive.');
+      } finally {
+        setIsProcessingZip(false);
+      }
+      return;
+    }
+
+    // Standard JSON file
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
@@ -151,16 +237,51 @@ export const UploadModal: React.FC<UploadModalProps> = ({
           <label className="border-2 border-dashed border-slate-800 hover:border-orange-500/50 bg-slate-950/60 hover:bg-slate-950 rounded-xl p-6 flex flex-col items-center justify-center cursor-pointer transition-all group">
             <UploadCloud className="w-8 h-8 text-slate-500 group-hover:text-orange-400 transition-colors mb-2" />
             <span className="text-xs font-semibold text-slate-300 group-hover:text-white">
-              Click to browse or drop .json file here
+              Click to browse or drop .json or .zip folder here
             </span>
-            <span className="text-[11px] text-slate-500 mt-1">Accepts Matillion project export or component schema JSON</span>
+            <span className="text-[11px] text-slate-500 mt-1">Accepts single Matillion .json job or .zip folder archive</span>
             <input
               type="file"
-              accept=".json,.txt"
+              accept=".json,.txt,.zip"
               onChange={handleFileUpload}
               className="hidden"
             />
           </label>
+
+          {isProcessingZip && (
+            <div className="p-3 bg-orange-500/10 border border-orange-500/20 rounded-xl text-xs text-orange-300 text-center animate-pulse flex items-center justify-center gap-2">
+              <Archive className="w-4 h-4 animate-spin" />
+              <span>Unpacking ZIP archive & parsing JSON jobs...</span>
+            </div>
+          )}
+
+          {extractedZipJobs.length > 0 && (
+            <div className="space-y-2">
+              <span className="text-xs font-semibold text-slate-300">
+                Found {extractedZipJobs.length} Jobs in ZIP Archive:
+              </span>
+              <div className="bg-slate-950 border border-slate-800 rounded-xl divide-y divide-slate-800/80 max-h-48 overflow-y-auto">
+                {extractedZipJobs.map((j, i) => (
+                  <div key={i} className="p-2.5 flex items-center justify-between gap-3 text-xs">
+                    <div>
+                      <span className="font-semibold text-white block">{j.name}</span>
+                      <span className="text-[10px] text-slate-500">{j.jobType} &bull; {j.components.length} components</span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        onImportJob(j);
+                        onClose();
+                      }}
+                      className="px-2.5 py-1 rounded-md bg-orange-500 hover:bg-orange-600 text-white font-medium text-[11px] flex items-center gap-1 transition-colors"
+                    >
+                      <span>Load</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="flex items-center gap-2 text-xs text-slate-500 justify-center">
             <span className="w-12 h-px bg-slate-800"></span>

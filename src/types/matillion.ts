@@ -62,6 +62,50 @@ export interface ConversionOptions {
   includeTypeHints: boolean;
   includeDataQualityChecks: boolean;
   runtimeVersion: '15.4' | '14.3' | '13.3';
+  dltExpectationsMode: 'drop' | 'fail' | 'warn';
+  dltPipelineType: 'triggered' | 'continuous';
+  dltUseStreaming: boolean;
+  // Batch Optimizer configuration
+  batchOptimizer: boolean;
+  inputDataVolume: 'small' | 'medium' | 'large' | 'massive';
+}
+
+export interface SchemaColumnPreview {
+  columnName: string;
+  sourceType: string;
+  targetSparkType: string;
+  targetSqlType: string;
+  nullable: boolean;
+  riskLevel: 'safe' | 'low' | 'warning' | 'high';
+  riskReason?: string;
+  recommendedMitigation?: string;
+}
+
+export interface SchemaValidationResult {
+  componentId: string;
+  componentName: string;
+  componentType: string;
+  columns: SchemaColumnPreview[];
+  totalColumns: number;
+  riskCounts: {
+    safe: number;
+    low: number;
+    warning: number;
+    high: number;
+  };
+  overallStatus: 'safe' | 'warning' | 'critical';
+  recommendations: string[];
+}
+
+export interface MatillionProjectFile {
+  id: string;
+  name: string;
+  path: string;
+  folder: string;
+  jobType: JobType;
+  sizeBytes: number;
+  componentCount: number;
+  jobData: MatillionJob;
 }
 
 export interface ConvertedOutput {
