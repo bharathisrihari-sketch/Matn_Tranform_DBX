@@ -22,8 +22,13 @@ import {
   ShieldAlert,
   Copy,
   Check,
-  Cpu,
-  Table
+  Cpu, 
+  Table,
+  X,
+  ChevronDown,
+  ChevronRight,
+  ChevronLeft,
+  ChevronsDownUp
 } from 'lucide-react';
 import { MatillionComponent, MatillionJob, ConversionOptions, SchemaValidationResult } from '../types/matillion';
 import { calculateConversionComplexity, ComplexityResult } from '../services/complexity';
@@ -37,6 +42,7 @@ interface MatillionInspectorProps {
   onUpdateComponent?: (comp: MatillionComponent) => void;
   activeTab?: 'component' | 'complexity' | 'schema' | 'options' | 'variables';
   onActiveTabChange?: (tab: 'component' | 'complexity' | 'schema' | 'options' | 'variables') => void;
+  onClose?: () => void;
 }
 
 export const MatillionInspector: React.FC<MatillionInspectorProps> = ({
@@ -46,11 +52,40 @@ export const MatillionInspector: React.FC<MatillionInspectorProps> = ({
   onOptionsChange,
   onUpdateComponent,
   activeTab: externalActiveTab,
-  onActiveTabChange
+  onActiveTabChange,
+  onClose
 }) => {
   const [internalActiveTab, setInternalActiveTab] = React.useState<'component' | 'complexity' | 'schema' | 'options' | 'variables'>('component');
+  const [viewDropdownOpen, setViewDropdownOpen] = useState(false);
   const [schemaFilter, setSchemaFilter] = useState<'all' | 'risks' | 'high'>('all');
   const [copiedSchema, setCopiedSchema] = useState(false);
+
+  // Slide window accordion states for all headers and subheaders in the hierarchy
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    componentHeader: true,
+    matillionParams: true,
+    pysparkStrategy: true,
+    unityCatalog: true,
+    dltSettings: true,
+    complexityHero: true,
+    complexityMetrics: true,
+    complexityTransformTypes: true,
+    complexityFactors: true,
+    complexityRecommendations: true,
+    schemaStatus: true,
+    schemaMetrics: true,
+    schemaColumns: true,
+    schemaStruct: false,
+    schemaRecommendations: true,
+    batchOptRecs: true
+  });
+
+  const toggleSection = (sectionKey: string) => {
+    setOpenSections(prev => ({
+      ...prev,
+      [sectionKey]: !prev[sectionKey]
+    }));
+  };
   
   const currentTab = externalActiveTab !== undefined ? externalActiveTab : internalActiveTab;
   const setTab = (tab: 'component' | 'complexity' | 'schema' | 'options' | 'variables') => {
@@ -97,74 +132,149 @@ export const MatillionInspector: React.FC<MatillionInspectorProps> = ({
 
   return (
     <div className="flex flex-col h-full bg-slate-900 border-r border-slate-800">
-      {/* Top Tab Bar */}
-      <div className="h-12 border-b border-slate-800 bg-slate-950 px-3 flex items-center justify-between">
-        <div className="flex items-center gap-1 overflow-x-auto scrollbar-none py-1">
+      {/* Header Simplification: Subheaders moved to Dropdown Mode with Collapse/Collide Icon right next to it */}
+      <div className="h-11 border-b border-slate-800 bg-slate-950 px-2.5 sm:px-3 flex items-center justify-between gap-1.5 shrink-0 z-20">
+        <div className="relative flex-1 min-w-0">
           <button
-            onClick={() => setTab('component')}
-            className={`px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap transition-colors ${
-              currentTab === 'component'
-                ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
+            onClick={() => setViewDropdownOpen(!viewDropdownOpen)}
+            className="w-full flex items-center justify-between px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700/80 transition-colors shadow-sm cursor-pointer"
+            title="Switch Inspector Sub-Headers & Views"
           >
-            Inspector
-          </button>
-          <button
-            onClick={() => setTab('complexity')}
-            className={`px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 ${
-              currentTab === 'complexity'
-                ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 font-bold'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Gauge className="w-3 h-3 text-cyan-400" />
-            <span>Complexity</span>
-            <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full border ${complexity.badgeBg}`}>
-              {complexity.score}
-            </span>
-          </button>
-          <button
-            onClick={() => setTab('schema')}
-            className={`px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 ${
-              currentTab === 'schema'
-                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <ShieldCheck className="w-3 h-3 text-emerald-400" />
-            <span>Schema Preview</span>
-            {schemaValidation.riskCounts.warning + schemaValidation.riskCounts.high > 0 ? (
-              <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                {schemaValidation.riskCounts.warning + schemaValidation.riskCounts.high} Risks
+            <div className="flex items-center gap-2 truncate">
+              {currentTab === 'component' && <Sliders className="w-3.5 h-3.5 text-orange-400 shrink-0" />}
+              {currentTab === 'complexity' && <Gauge className="w-3.5 h-3.5 text-cyan-400 shrink-0" />}
+              {currentTab === 'schema' && <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
+              {currentTab === 'options' && <Cpu className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
+              {currentTab === 'variables' && <Table className="w-3.5 h-3.5 text-purple-400 shrink-0" />}
+              <span className="truncate">
+                {currentTab === 'component' ? 'Component Inspector' :
+                 currentTab === 'complexity' ? 'Conversion Complexity' :
+                 currentTab === 'schema' ? 'Schema Preview & Types' :
+                 currentTab === 'options' ? 'Conversion Settings' :
+                 'Variables & Params'}
               </span>
-            ) : (
-              <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                Safe
-              </span>
-            )}
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0 ml-1">
+              {currentTab === 'complexity' && (
+                <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full border ${complexity.badgeBg}`}>
+                  {complexity.score}/100
+                </span>
+              )}
+              {currentTab === 'schema' && (
+                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  {schemaValidation.riskCounts.warning + schemaValidation.riskCounts.high > 0 
+                    ? `${schemaValidation.riskCounts.warning + schemaValidation.riskCounts.high} Risks`
+                    : 'Safe'}
+                </span>
+              )}
+              {currentTab === 'variables' && (
+                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                  {job.variables.length}
+                </span>
+              )}
+              <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${viewDropdownOpen ? 'rotate-180' : ''}`} />
+            </div>
           </button>
-          <button
-            onClick={() => setTab('options')}
-            className={`px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap transition-colors ${
-              currentTab === 'options'
-                ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            Settings
-          </button>
-          <button
-            onClick={() => setTab('variables')}
-            className={`px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap transition-colors ${
-              currentTab === 'variables'
-                ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            Vars ({job.variables.length})
-          </button>
+
+          {viewDropdownOpen && (
+            <div 
+              className="absolute left-0 top-full mt-1.5 w-full bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-1 z-40 space-y-0.5 font-sans"
+              onClick={() => setViewDropdownOpen(false)}
+            >
+              <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800">
+                Inspector Sub-Headers &amp; Views
+              </div>
+              
+              <button
+                onClick={() => setTab('component')}
+                className={`w-full text-left px-2 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors ${
+                  currentTab === 'component' ? 'bg-orange-500/20 text-orange-300 font-bold' : 'text-slate-300 hover:bg-slate-800'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Sliders className="w-3.5 h-3.5 text-orange-400" />
+                  <span>Component Inspector</span>
+                </div>
+                {currentTab === 'component' && <Check className="w-3 h-3 text-orange-400" />}
+              </button>
+
+              <button
+                onClick={() => setTab('complexity')}
+                className={`w-full text-left px-2 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors ${
+                  currentTab === 'complexity' ? 'bg-cyan-500/20 text-cyan-300 font-bold' : 'text-slate-300 hover:bg-slate-800'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Gauge className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Conversion Complexity</span>
+                </div>
+                <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full border ${complexity.badgeBg}`}>
+                  {complexity.score}/100
+                </span>
+              </button>
+
+              <button
+                onClick={() => setTab('schema')}
+                className={`w-full text-left px-2 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors ${
+                  currentTab === 'schema' ? 'bg-emerald-500/20 text-emerald-300 font-bold' : 'text-slate-300 hover:bg-slate-800'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Schema Preview &amp; Types</span>
+                </div>
+                {schemaValidation.riskCounts.warning + schemaValidation.riskCounts.high > 0 ? (
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    {schemaValidation.riskCounts.warning + schemaValidation.riskCounts.high} Risks
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    Safe
+                  </span>
+                )}
+              </button>
+
+              <button
+                onClick={() => setTab('options')}
+                className={`w-full text-left px-2 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors ${
+                  currentTab === 'options' ? 'bg-amber-500/20 text-amber-300 font-bold' : 'text-slate-300 hover:bg-slate-800'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Cpu className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Conversion Settings</span>
+                </div>
+                {currentTab === 'options' && <Check className="w-3 h-3 text-amber-400" />}
+              </button>
+
+              <button
+                onClick={() => setTab('variables')}
+                className={`w-full text-left px-2 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors ${
+                  currentTab === 'variables' ? 'bg-purple-500/20 text-purple-300 font-bold' : 'text-slate-300 hover:bg-slate-800'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Table className="w-3.5 h-3.5 text-purple-400" />
+                  <span>Variables &amp; Params</span>
+                </div>
+                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                  {job.variables.length}
+                </span>
+              </button>
+            </div>
+          )}
         </div>
+
+        {/* Collapse / Collide icon placed right next to dropdown */}
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-md border border-slate-800 bg-slate-950 hover:bg-slate-800 text-cyan-400 hover:text-white text-xs transition-colors shadow-sm shrink-0 flex items-center justify-center cursor-pointer"
+            title="Collapse / Collide Inspector Menu (Maximizes DAG View)"
+          >
+            <ChevronsDownUp className="w-3.5 h-3.5 text-cyan-400" />
+          </button>
+        )}
       </div>
 
       {/* Tab Content */}
@@ -206,51 +316,81 @@ export const MatillionInspector: React.FC<MatillionInspectorProps> = ({
 
             {selectedComponent ? (
               <div className="space-y-4">
-                {/* Component Header Card */}
-                <div className="p-3.5 bg-slate-950/80 rounded-xl border border-slate-800">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-mono text-slate-500">{selectedComponent.id}</span>
-                    <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-orange-500/10 text-orange-400 border border-orange-500/20">
-                      {selectedComponent.type}
-                    </span>
-                  </div>
-                  <h3 className="text-base font-bold text-white tracking-tight">{selectedComponent.name}</h3>
-                  <p className="text-xs text-slate-400 mt-1">Category: {selectedComponent.category}</p>
-                </div>
+                {/* Component Header Card (Slide Window Option) */}
+                <div className="border border-slate-800 rounded-xl overflow-hidden bg-slate-950/80">
+                  <button
+                    onClick={() => toggleSection('componentHeader')}
+                    className="w-full p-3 flex items-center justify-between text-left hover:bg-slate-900 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-orange-500/10 text-orange-400 border border-orange-500/20">
+                        {selectedComponent.type}
+                      </span>
+                      <h3 className="text-sm font-bold text-white tracking-tight truncate max-w-[190px]">
+                        {selectedComponent.name}
+                      </h3>
+                    </div>
+                    <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${openSections.componentHeader ? '' : '-rotate-90'}`} />
+                  </button>
 
-              {/* Matillion Parameters */}
-              <div className="space-y-2">
-                <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                  <Sliders className="w-3.5 h-3.5 text-orange-400" />
-                  Matillion Parameters
-                </h4>
-                
-                <div className="bg-slate-950 rounded-xl border border-slate-800 p-3 space-y-2 text-xs">
-                  {Object.entries(selectedComponent.parameters).map(([key, val]) => (
-                    <div key={key} className="border-b border-slate-800/80 pb-2 last:border-b-0 last:pb-0">
-                      <span className="text-slate-500 font-mono text-[11px] block">{key}</span>
-                      <div className="text-slate-200 font-mono text-xs mt-0.5 break-all">
-                        {typeof val === 'object' ? (
-                          <pre className="text-[11px] bg-slate-900 p-2 rounded mt-1 overflow-x-auto text-cyan-300">
-                            {JSON.stringify(val, null, 2)}
-                          </pre>
-                        ) : (
-                          String(val)
-                        )}
+                  {openSections.componentHeader && (
+                    <div className="px-3 pb-3 pt-0 border-t border-slate-800/60 mt-1">
+                      <div className="flex items-center justify-between text-xs text-slate-400 mt-2">
+                        <span className="font-mono text-slate-500 text-[11px]">{selectedComponent.id}</span>
+                        <span>Category: <strong className="text-slate-300">{selectedComponent.category}</strong></span>
                       </div>
                     </div>
-                  ))}
+                  )}
                 </div>
+
+              {/* Matillion Parameters (Slide Window Option) */}
+              <div className="space-y-2 border border-slate-800 rounded-xl overflow-hidden bg-slate-950/40">
+                <button
+                  onClick={() => toggleSection('matillionParams')}
+                  className="w-full p-2.5 bg-slate-950 flex items-center justify-between text-left hover:bg-slate-900 transition-colors"
+                >
+                  <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <Sliders className="w-3.5 h-3.5 text-orange-400" />
+                    Matillion Parameters ({Object.keys(selectedComponent.parameters).length})
+                  </h4>
+                  <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${openSections.matillionParams ? '' : '-rotate-90'}`} />
+                </button>
+                
+                {openSections.matillionParams && (
+                  <div className="p-3 pt-1 space-y-2 text-xs">
+                    {Object.entries(selectedComponent.parameters).map(([key, val]) => (
+                      <div key={key} className="border-b border-slate-800/80 pb-2 last:border-b-0 last:pb-0">
+                        <span className="text-slate-500 font-mono text-[11px] block">{key}</span>
+                        <div className="text-slate-200 font-mono text-xs mt-0.5 break-all">
+                          {typeof val === 'object' ? (
+                            <pre className="text-[11px] bg-slate-900 p-2 rounded mt-1 overflow-x-auto text-cyan-300">
+                              {JSON.stringify(val, null, 2)}
+                            </pre>
+                          ) : (
+                            String(val)
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {/* Databricks PySpark Translation Mapping */}
-              <div className="space-y-2">
-                <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                  <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
-                  Databricks PySpark Strategy
-                </h4>
+              {/* Databricks PySpark Translation Mapping (Slide Window Option) */}
+              <div className="space-y-2 border border-emerald-500/20 rounded-xl overflow-hidden bg-emerald-950/10">
+                <button
+                  onClick={() => toggleSection('pysparkStrategy')}
+                  className="w-full p-2.5 bg-slate-950 flex items-center justify-between text-left hover:bg-slate-900 transition-colors"
+                >
+                  <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+                    Databricks PySpark Strategy
+                  </h4>
+                  <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${openSections.pysparkStrategy ? '' : '-rotate-90'}`} />
+                </button>
 
-                <div className="bg-emerald-950/20 border border-emerald-500/20 rounded-xl p-3 text-xs space-y-2 text-slate-300">
+                {openSections.pysparkStrategy && (
+                  <div className="p-3 pt-1 text-xs space-y-2 text-slate-300">
                   {selectedComponent.type === 'Table Input' && (
                     <>
                       <p className="text-emerald-300 font-medium">Spark Table Read & Pushdown</p>
@@ -294,8 +434,9 @@ export const MatillionInspector: React.FC<MatillionInspectorProps> = ({
                     </>
                   )}
                 </div>
-              </div>
+              )}
             </div>
+          </div>
           ) : (
             <div className="text-center py-12 px-4">
               <Info className="w-8 h-8 text-slate-600 mx-auto mb-2" />
@@ -308,341 +449,486 @@ export const MatillionInspector: React.FC<MatillionInspectorProps> = ({
 
         {/* Tab: Dedicated Conversion Complexity Breakdown */}
         {currentTab === 'complexity' && (
-          <div className="space-y-4 text-xs">
-            {/* Complexity Hero Score Card */}
-            <div className="p-4 bg-slate-950 rounded-xl border border-slate-800 space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 block">Assessment</span>
-                  <h3 className="text-sm font-bold text-white flex items-center gap-1.5 mt-0.5">
-                    <Gauge className="w-4 h-4 text-cyan-400" />
-                    Conversion Complexity Score
-                  </h3>
-                </div>
-                <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${complexity.badgeBg}`}>
-                  {complexity.level} Complexity
-                </span>
-              </div>
-
-              {/* Progress gauge bar */}
-              <div className="space-y-1.5 pt-1">
-                <div className="flex items-baseline justify-between">
-                  <span className="text-2xl font-extrabold font-mono text-white tracking-tight">
-                    {complexity.score}
-                    <span className="text-xs font-normal text-slate-500 ml-1">/ 100</span>
-                  </span>
-                  <span className="text-[11px] text-slate-400 font-medium">
-                    {complexity.score <= 38 ? 'Seamless 1:1 migration' :
-                     complexity.score <= 68 ? 'Automated with optimizations' :
-                     complexity.score <= 84 ? 'High analytical complexity' : 'Enterprise grade workflow'}
+          <div className="space-y-3 text-xs">
+            {/* 1. Complexity Hero Score Card (Collapsible Slide Window) */}
+            <div className="border border-slate-800 rounded-xl overflow-hidden bg-slate-950/40">
+              <button
+                onClick={() => toggleSection('complexityHero')}
+                className="w-full p-3 bg-slate-950 flex items-center justify-between text-left hover:bg-slate-900 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <Gauge className="w-4 h-4 text-cyan-400" />
+                  <span className="font-bold text-white text-xs">Complexity Assessment</span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${complexity.badgeBg}`}>
+                    {complexity.score}/100 ({complexity.level})
                   </span>
                 </div>
-                <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden p-0.5">
-                  <div 
-                    className={`h-full rounded-full transition-all duration-700 ${
-                      complexity.score <= 38 ? 'bg-gradient-to-r from-emerald-500 to-teal-400' :
-                      complexity.score <= 68 ? 'bg-gradient-to-r from-sky-500 to-cyan-400' :
-                      complexity.score <= 84 ? 'bg-gradient-to-r from-amber-500 to-orange-400' :
-                      'bg-gradient-to-r from-rose-500 to-red-400'
-                    }`}
-                    style={{ width: `${complexity.score}%` }}
-                  />
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${openSections.complexityHero ? 'rotate-0' : '-rotate-90'}`} />
+              </button>
+
+              {openSections.complexityHero && (
+                <div className="p-3.5 pt-1 space-y-3 border-t border-slate-800/80">
+                  {/* Progress gauge bar */}
+                  <div className="space-y-1.5 pt-1">
+                    <div className="flex items-baseline justify-between">
+                      <span className="text-2xl font-extrabold font-mono text-white tracking-tight">
+                        {complexity.score}
+                        <span className="text-xs font-normal text-slate-500 ml-1">/ 100</span>
+                      </span>
+                      <span className="text-[11px] text-slate-400 font-medium">
+                        {complexity.score <= 38 ? 'Seamless 1:1 migration' :
+                         complexity.score <= 68 ? 'Automated with optimizations' :
+                         complexity.score <= 84 ? 'High analytical complexity' : 'Enterprise grade workflow'}
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden p-0.5">
+                      <div 
+                        className={`h-full rounded-full transition-all duration-700 ${
+                          complexity.score <= 38 ? 'bg-gradient-to-r from-emerald-500 to-teal-400' :
+                          complexity.score <= 68 ? 'bg-gradient-to-r from-sky-500 to-cyan-400' :
+                          complexity.score <= 84 ? 'bg-gradient-to-r from-amber-500 to-orange-400' :
+                          'bg-gradient-to-r from-rose-500 to-red-400'
+                        }`}
+                        style={{ width: `${complexity.score}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  <p className="text-slate-300 text-[11px] leading-relaxed bg-slate-900/80 p-2.5 rounded-lg border border-slate-800">
+                    {complexity.summary}
+                  </p>
+
+                  {/* Quick Metrics Matrix */}
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <div className="p-2 bg-slate-950 rounded-lg border border-slate-800">
+                      <span className="text-[10px] text-slate-400 block font-medium">Total Components</span>
+                      <span className="text-sm font-bold font-mono text-white mt-0.5 block">{complexity.totalComponents}</span>
+                    </div>
+                    <div className="p-2 bg-slate-950 rounded-lg border border-slate-800">
+                      <span className="text-[10px] text-slate-400 block font-medium">Transform Variety</span>
+                      <span className="text-sm font-bold font-mono text-cyan-400 mt-0.5 block">{complexity.uniqueTypesCount}</span>
+                    </div>
+                    <div className="p-2 bg-slate-950 rounded-lg border border-slate-800">
+                      <span className="text-[10px] text-slate-400 block font-medium">DAG Dependencies</span>
+                      <span className="text-sm font-bold font-mono text-purple-400 mt-0.5 block">{job.links.length}</span>
+                    </div>
+                    <div className="p-2 bg-slate-950 rounded-lg border border-slate-800">
+                      <span className="text-[10px] text-slate-400 block font-medium">Runtime Parameters</span>
+                      <span className="text-sm font-bold font-mono text-orange-400 mt-0.5 block">{job.variables.length}</span>
+                    </div>
+                  </div>
                 </div>
-              </div>
-
-              <p className="text-slate-300 text-[11px] leading-relaxed bg-slate-900/80 p-2.5 rounded-lg border border-slate-800">
-                {complexity.summary}
-              </p>
+              )}
             </div>
 
-            {/* Quick Metrics Matrix */}
-            <div className="grid grid-cols-2 gap-2">
-              <div className="p-2.5 bg-slate-950 rounded-lg border border-slate-800">
-                <span className="text-[10px] text-slate-400 block font-medium">Total Components</span>
-                <span className="text-base font-bold font-mono text-white mt-0.5 block">{complexity.totalComponents}</span>
-                <span className="text-[10px] text-slate-500">Pipeline nodes</span>
-              </div>
-              <div className="p-2.5 bg-slate-950 rounded-lg border border-slate-800">
-                <span className="text-[10px] text-slate-400 block font-medium">Transform Variety</span>
-                <span className="text-base font-bold font-mono text-cyan-400 mt-0.5 block">{complexity.uniqueTypesCount}</span>
-                <span className="text-[10px] text-slate-500">Distinct operators</span>
-              </div>
-              <div className="p-2.5 bg-slate-950 rounded-lg border border-slate-800">
-                <span className="text-[10px] text-slate-400 block font-medium">DAG Dependencies</span>
-                <span className="text-base font-bold font-mono text-purple-400 mt-0.5 block">{job.links.length}</span>
-                <span className="text-[10px] text-slate-500">Execution links</span>
-              </div>
-              <div className="p-2.5 bg-slate-950 rounded-lg border border-slate-800">
-                <span className="text-[10px] text-slate-400 block font-medium">Runtime Parameters</span>
-                <span className="text-base font-bold font-mono text-orange-400 mt-0.5 block">{job.variables.length}</span>
-                <span className="text-[10px] text-slate-500">Widgets & variables</span>
-              </div>
-            </div>
+            {/* 2. Transformation Types Breakdown (Collapsible Slide Window) */}
+            <div className="border border-slate-800 rounded-xl overflow-hidden bg-slate-950/40">
+              <button
+                onClick={() => toggleSection('complexityTransformTypes')}
+                className="w-full p-3 bg-slate-950 flex items-center justify-between text-left hover:bg-slate-900 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="w-3.5 h-3.5 text-cyan-400" />
+                  <span className="font-semibold text-slate-200">Transformation Types Breakdown</span>
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                    {complexity.transformationTypes.length} types
+                  </span>
+                </div>
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${openSections.complexityTransformTypes ? 'rotate-0' : '-rotate-90'}`} />
+              </button>
 
-            {/* Transformation Types Breakdown */}
-            <div className="space-y-2">
-              <h4 className="text-[11px] font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                <BarChart3 className="w-3.5 h-3.5 text-cyan-400" />
-                Transformation Types Found ({complexity.transformationTypes.length})
-              </h4>
-              <div className="bg-slate-950 rounded-xl border border-slate-800 divide-y divide-slate-800/80 overflow-hidden">
-                {complexity.transformationTypes.map((t, idx) => (
-                  <div key={idx} className="p-2.5 flex items-center justify-between hover:bg-slate-900/50 transition-colors">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
-                      <div>
-                        <span className="font-semibold text-slate-200 block text-xs">{t.type}</span>
-                        <span className="text-[10px] text-slate-500">{t.category} Category</span>
+              {openSections.complexityTransformTypes && (
+                <div className="p-2 divide-y divide-slate-800/80 border-t border-slate-800/80">
+                  {complexity.transformationTypes.map((t, idx) => (
+                    <div key={idx} className="p-2 flex items-center justify-between hover:bg-slate-900/50 transition-colors">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
+                        <div>
+                          <span className="font-semibold text-slate-200 block text-xs">{t.type}</span>
+                          <span className="text-[10px] text-slate-500">{t.category} Category</span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="font-mono text-xs font-bold text-white bg-slate-800 px-2 py-0.5 rounded">
+                          {t.count}x
+                        </span>
+                        <span className="text-[10px] text-slate-500 block mt-0.5">
+                          Weight: {t.weight >= 8 ? 'High' : t.weight >= 6 ? 'Medium' : 'Standard'}
+                        </span>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <span className="font-mono text-xs font-bold text-white bg-slate-800 px-2 py-0.5 rounded">
-                        {t.count}x
-                      </span>
-                      <span className="text-[10px] text-slate-500 block mt-0.5">
-                        Weight: {t.weight >= 8 ? 'High' : t.weight >= 6 ? 'Medium' : 'Standard'}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Score Calculation Factors */}
-            <div className="space-y-2">
-              <h4 className="text-[11px] font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                <Scale className="w-3.5 h-3.5 text-amber-400" />
-                Score Calculation Factors
-              </h4>
-              <div className="bg-slate-950 rounded-xl border border-slate-800 p-3 space-y-2.5">
-                {complexity.factors.map((f, i) => (
-                  <div key={i} className="flex items-start justify-between border-b border-slate-800/60 pb-2 last:border-b-0 last:pb-0">
-                    <div>
-                      <div className="text-xs font-semibold text-slate-200">{f.name}</div>
-                      <div className="text-[10px] text-slate-400">{f.description}</div>
+            {/* 3. Score Calculation Factors (Collapsible Slide Window) */}
+            <div className="border border-slate-800 rounded-xl overflow-hidden bg-slate-950/40">
+              <button
+                onClick={() => toggleSection('complexityFactors')}
+                className="w-full p-3 bg-slate-950 flex items-center justify-between text-left hover:bg-slate-900 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <Scale className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="font-semibold text-slate-200">Score Calculation Factors</span>
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                    {complexity.factors.length} factors
+                  </span>
+                </div>
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${openSections.complexityFactors ? 'rotate-0' : '-rotate-90'}`} />
+              </button>
+
+              {openSections.complexityFactors && (
+                <div className="p-3 space-y-2 border-t border-slate-800/80">
+                  {complexity.factors.map((f, i) => (
+                    <div key={i} className="flex items-start justify-between border-b border-slate-800/60 pb-2 last:border-b-0 last:pb-0">
+                      <div>
+                        <div className="text-xs font-semibold text-slate-200">{f.name}</div>
+                        <div className="text-[10px] text-slate-400">{f.description}</div>
+                      </div>
+                      <div className="font-mono text-xs font-bold text-cyan-300 whitespace-nowrap ml-2">
+                        +{f.subtotal} pts
+                      </div>
                     </div>
-                    <div className="font-mono text-xs font-bold text-cyan-300 whitespace-nowrap ml-2">
-                      +{f.subtotal} pts
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Databricks Target Recommendations */}
-            <div className="space-y-2">
-              <h4 className="text-[11px] font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                <Zap className="w-3.5 h-3.5 text-emerald-400" />
-                Target Databricks Strategy
-              </h4>
-              <div className="bg-emerald-950/20 border border-emerald-500/20 rounded-xl p-3 space-y-2">
-                {complexity.recommendations.map((rec, i) => (
-                  <div key={i} className="flex items-start gap-2 text-slate-300">
-                    <span className="text-emerald-400 font-bold mt-0.5">•</span>
-                    <span>{rec}</span>
-                  </div>
-                ))}
-              </div>
+            {/* 4. Target Databricks Strategy (Collapsible Slide Window) */}
+            <div className="border border-emerald-500/20 rounded-xl overflow-hidden bg-emerald-950/10">
+              <button
+                onClick={() => toggleSection('complexityRecommendations')}
+                className="w-full p-3 bg-slate-950 flex items-center justify-between text-left hover:bg-slate-900 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <Zap className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="font-semibold text-slate-200">Target Databricks Strategy</span>
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    Recommendations
+                  </span>
+                </div>
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${openSections.complexityRecommendations ? 'rotate-0' : '-rotate-90'}`} />
+              </button>
+
+              {openSections.complexityRecommendations && (
+                <div className="p-3 space-y-2 border-t border-slate-800/80">
+                  {complexity.recommendations.map((rec, i) => (
+                    <div key={i} className="flex items-start gap-2 text-slate-300">
+                      <span className="text-emerald-400 font-bold mt-0.5">•</span>
+                      <span>{rec}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
 
+        {/* Tab: Schema Preview with Collapsible Slide Windows */}
         {currentTab === 'schema' && (
-          <div className="space-y-4 text-xs">
-            {/* Header / Inspected Component Info */}
-            <div className="p-3 bg-slate-950 rounded-xl border border-slate-800">
-              <div className="flex items-center justify-between mb-1.5">
-                <div className="flex items-center gap-2">
-                  <Database className="w-4 h-4 text-emerald-400" />
-                  <span className="font-bold text-white text-xs">{schemaValidation.componentName}</span>
-                </div>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
-                  {schemaValidation.componentType}
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-400">
-                Source: <span className="text-slate-200 font-semibold">{job.targetPlatform || 'Snowflake'}</span> → Target: <span className="text-cyan-400 font-semibold">Databricks PySpark & Delta Lake</span>
-              </p>
-            </div>
-
-            {/* Overall Status Banner */}
-            <div className={`p-3 rounded-xl border flex items-start gap-3 ${
-              schemaValidation.overallStatus === 'critical'
-                ? 'bg-rose-950/20 border-rose-500/40 text-rose-200'
-                : schemaValidation.overallStatus === 'warning'
-                ? 'bg-amber-950/20 border-amber-500/40 text-amber-200'
-                : 'bg-emerald-950/20 border-emerald-500/30 text-emerald-200'
-            }`}>
-              {schemaValidation.overallStatus === 'critical' ? (
-                <ShieldAlert className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
-              ) : schemaValidation.overallStatus === 'warning' ? (
-                <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-              ) : (
-                <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
-              )}
-              <div className="flex-1">
-                <div className="font-bold text-xs mb-0.5">
-                  {schemaValidation.overallStatus === 'critical'
-                    ? 'Critical Type-Mismatch Risks Detected'
-                    : schemaValidation.overallStatus === 'warning'
-                    ? 'Schema Compatibility Warnings Present'
-                    : 'Schema Fully Compatible With Delta Lake'}
-                </div>
-                <p className="text-[11px] opacity-90">
-                  {schemaValidation.overallStatus === 'critical'
-                    ? 'Semi-structured VARIANT or complex columns require explicit PySpark schema definition to prevent runtime schema inference failures.'
-                    : schemaValidation.overallStatus === 'warning'
-                    ? 'Identified potential precision or timezone drift risks (TIMESTAMP_NTZ / NUMBER overflow). See mitigation recommendations below.'
-                    : 'All column data types convert cleanly to native PySpark types with zero precision loss.'}
-                </p>
-              </div>
-            </div>
-
-            {/* Metrics Breakdown Grid */}
-            <div className="grid grid-cols-4 gap-2 text-center">
-              <div className="p-2 bg-slate-950 rounded-lg border border-slate-800">
-                <div className="font-mono text-sm font-bold text-white">{schemaValidation.totalColumns}</div>
-                <div className="text-[10px] text-slate-400">Columns</div>
-              </div>
-              <div className="p-2 bg-emerald-950/20 rounded-lg border border-emerald-500/30">
-                <div className="font-mono text-sm font-bold text-emerald-400">{schemaValidation.riskCounts.safe}</div>
-                <div className="text-[10px] text-emerald-300">Safe</div>
-              </div>
-              <div className="p-2 bg-amber-950/20 rounded-lg border border-amber-500/30">
-                <div className="font-mono text-sm font-bold text-amber-400">{schemaValidation.riskCounts.warning}</div>
-                <div className="text-[10px] text-amber-300">Warnings</div>
-              </div>
-              <div className="p-2 bg-rose-950/20 rounded-lg border border-rose-500/30">
-                <div className="font-mono text-sm font-bold text-rose-400">{schemaValidation.riskCounts.high}</div>
-                <div className="text-[10px] text-rose-300">High Risk</div>
-              </div>
-            </div>
-
-            {/* Filter and Actions Bar */}
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setSchemaFilter('all')}
-                  className={`px-2 py-1 rounded text-[10px] font-semibold transition-colors ${
-                    schemaFilter === 'all'
-                      ? 'bg-slate-700 text-white'
-                      : 'bg-slate-950 text-slate-400 hover:text-white'
-                  }`}
-                >
-                  All ({schemaValidation.totalColumns})
-                </button>
-                <button
-                  onClick={() => setSchemaFilter('risks')}
-                  className={`px-2 py-1 rounded text-[10px] font-semibold transition-colors ${
-                    schemaFilter === 'risks'
-                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                      : 'bg-slate-950 text-slate-400 hover:text-white'
-                  }`}
-                >
-                  Risks Only ({schemaValidation.riskCounts.low + schemaValidation.riskCounts.warning + schemaValidation.riskCounts.high})
-                </button>
-                <button
-                  onClick={() => setSchemaFilter('high')}
-                  className={`px-2 py-1 rounded text-[10px] font-semibold transition-colors ${
-                    schemaFilter === 'high'
-                      ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
-                      : 'bg-slate-950 text-slate-400 hover:text-white'
-                  }`}
-                >
-                  High Risk ({schemaValidation.riskCounts.high})
-                </button>
-              </div>
-
+          <div className="space-y-3 text-xs">
+            {/* 1. Header & Status Banner (Collapsible Slide Window) */}
+            <div className="border border-slate-800 rounded-xl overflow-hidden bg-slate-950/40">
               <button
-                onClick={copyStructType}
-                className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-[11px] font-medium flex items-center gap-1.5 transition-colors border border-slate-700"
-                title="Copy schema as PySpark StructType code"
+                onClick={() => toggleSection('schemaStatus')}
+                className="w-full p-3 bg-slate-950 flex items-center justify-between text-left hover:bg-slate-900 transition-colors"
               >
-                {copiedSchema ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 text-slate-400" />}
-                <span>{copiedSchema ? 'Copied DDL' : 'Copy StructType'}</span>
+                <div className="flex items-center gap-2">
+                  <Database className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="font-bold text-white text-xs">{schemaValidation.componentName}</span>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                    schemaValidation.overallStatus === 'critical'
+                      ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                      : schemaValidation.overallStatus === 'warning'
+                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                      : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                  }`}>
+                    {schemaValidation.overallStatus.toUpperCase()}
+                  </span>
+                </div>
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${openSections.schemaStatus ? 'rotate-0' : '-rotate-90'}`} />
               </button>
+
+              {openSections.schemaStatus && (
+                <div className="p-3 space-y-3 border-t border-slate-800/80">
+                  <p className="text-[11px] text-slate-400">
+                    Source: <span className="text-slate-200 font-semibold">{job.targetPlatform || 'Snowflake'}</span> → Target: <span className="text-cyan-400 font-semibold">Databricks PySpark & Delta Lake</span>
+                  </p>
+
+                  <div className={`p-3 rounded-xl border flex items-start gap-3 ${
+                    schemaValidation.overallStatus === 'critical'
+                      ? 'bg-rose-950/20 border-rose-500/40 text-rose-200'
+                      : schemaValidation.overallStatus === 'warning'
+                      ? 'bg-amber-950/20 border-amber-500/40 text-amber-200'
+                      : 'bg-emerald-950/20 border-emerald-500/30 text-emerald-200'
+                  }`}>
+                    {schemaValidation.overallStatus === 'critical' ? (
+                      <ShieldAlert className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+                    ) : schemaValidation.overallStatus === 'warning' ? (
+                      <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                    ) : (
+                      <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+                    )}
+                    <div className="flex-1">
+                      <div className="font-bold text-xs mb-0.5">
+                        {schemaValidation.overallStatus === 'critical'
+                          ? 'Critical Type-Mismatch Risks Detected'
+                          : schemaValidation.overallStatus === 'warning'
+                          ? 'Schema Compatibility Warnings Present'
+                          : 'Schema Fully Compatible With Delta Lake'}
+                      </div>
+                      <p className="text-[11px] opacity-90">
+                        {schemaValidation.overallStatus === 'critical'
+                          ? 'Semi-structured VARIANT or complex columns require explicit PySpark schema definition to prevent runtime schema inference failures.'
+                          : schemaValidation.overallStatus === 'warning'
+                          ? 'Identified potential precision or timezone drift risks (TIMESTAMP_NTZ / NUMBER overflow). See mitigation recommendations below.'
+                          : 'All column data types convert cleanly to native PySpark types with zero precision loss.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Columns Mapping Table */}
-            <div className="space-y-2">
-              {schemaValidation.columns
-                .filter(col => {
-                  if (schemaFilter === 'high') return col.riskLevel === 'high';
-                  if (schemaFilter === 'risks') return col.riskLevel !== 'safe';
-                  return true;
-                })
-                .map((col, idx) => (
-                  <div
-                    key={idx}
-                    className={`p-3 rounded-xl border transition-all ${
-                      col.riskLevel === 'high'
-                        ? 'bg-rose-950/20 border-rose-500/40'
-                        : col.riskLevel === 'warning'
-                        ? 'bg-amber-950/15 border-amber-500/30'
-                        : col.riskLevel === 'low'
-                        ? 'bg-blue-950/15 border-blue-500/30'
-                        : 'bg-slate-950 border-slate-800/80'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1.5">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs font-bold text-white">{col.columnName}</span>
-                        {col.nullable && (
-                          <span className="text-[9px] px-1 py-0.2 rounded bg-slate-800 text-slate-400">null</span>
-                        )}
-                      </div>
-                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
-                        col.riskLevel === 'high'
-                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
-                          : col.riskLevel === 'warning'
-                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                          : col.riskLevel === 'low'
-                          ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40'
-                          : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                      }`}>
-                        {col.riskLevel}
-                      </span>
+            {/* 2. Metrics Breakdown Grid (Collapsible Slide Window) */}
+            <div className="border border-slate-800 rounded-xl overflow-hidden bg-slate-950/40">
+              <button
+                onClick={() => toggleSection('schemaMetrics')}
+                className="w-full p-2.5 bg-slate-950 flex items-center justify-between text-left hover:bg-slate-900 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
+                  <span className="font-semibold text-slate-200">Schema Health Summary</span>
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                    {schemaValidation.totalColumns} Columns
+                  </span>
+                </div>
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${openSections.schemaMetrics ? 'rotate-0' : '-rotate-90'}`} />
+              </button>
+
+              {openSections.schemaMetrics && (
+                <div className="p-3 border-t border-slate-800/80">
+                  <div className="grid grid-cols-4 gap-2 text-center">
+                    <div className="p-2 bg-slate-950 rounded-lg border border-slate-800">
+                      <div className="font-mono text-sm font-bold text-white">{schemaValidation.totalColumns}</div>
+                      <div className="text-[10px] text-slate-400">Total</div>
+                    </div>
+                    <div className="p-2 bg-emerald-950/20 rounded-lg border border-emerald-500/30">
+                      <div className="font-mono text-sm font-bold text-emerald-400">{schemaValidation.riskCounts.safe}</div>
+                      <div className="text-[10px] text-emerald-300">Safe</div>
+                    </div>
+                    <div className="p-2 bg-amber-950/20 rounded-lg border border-amber-500/30">
+                      <div className="font-mono text-sm font-bold text-amber-400">{schemaValidation.riskCounts.warning}</div>
+                      <div className="text-[10px] text-amber-300">Warnings</div>
+                    </div>
+                    <div className="p-2 bg-rose-950/20 rounded-lg border border-rose-500/30">
+                      <div className="font-mono text-sm font-bold text-rose-400">{schemaValidation.riskCounts.high}</div>
+                      <div className="text-[10px] text-rose-300">High Risk</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 3. Columns Mapping Table (Collapsible Slide Window) */}
+            <div className="border border-slate-800 rounded-xl overflow-hidden bg-slate-950/40">
+              <button
+                onClick={() => toggleSection('schemaColumns')}
+                className="w-full p-2.5 bg-slate-950 flex items-center justify-between text-left hover:bg-slate-900 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <Table className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="font-semibold text-slate-200">Columns Mapping Table</span>
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                    {schemaValidation.columns.length} Fields
+                  </span>
+                </div>
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${openSections.schemaColumns ? 'rotate-0' : '-rotate-90'}`} />
+              </button>
+
+              {openSections.schemaColumns && (
+                <div className="p-3 space-y-3 border-t border-slate-800/80">
+                  {/* Filter and Actions Bar */}
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setSchemaFilter('all')}
+                        className={`px-2 py-1 rounded text-[10px] font-semibold transition-colors ${
+                          schemaFilter === 'all'
+                            ? 'bg-slate-700 text-white'
+                            : 'bg-slate-950 text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        All ({schemaValidation.totalColumns})
+                      </button>
+                      <button
+                        onClick={() => setSchemaFilter('risks')}
+                        className={`px-2 py-1 rounded text-[10px] font-semibold transition-colors ${
+                          schemaFilter === 'risks'
+                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                            : 'bg-slate-950 text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        Risks ({schemaValidation.riskCounts.low + schemaValidation.riskCounts.warning + schemaValidation.riskCounts.high})
+                      </button>
+                      <button
+                        onClick={() => setSchemaFilter('high')}
+                        className={`px-2 py-1 rounded text-[10px] font-semibold transition-colors ${
+                          schemaFilter === 'high'
+                            ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                            : 'bg-slate-950 text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        High ({schemaValidation.riskCounts.high})
+                      </button>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 text-[11px] mb-1.5">
-                      <div className="p-1.5 rounded bg-slate-900/80 border border-slate-800 font-mono">
-                        <span className="text-[9px] text-slate-400 block font-sans">Source ({job.targetPlatform || 'Warehouse'}):</span>
-                        <span className="text-amber-300 font-semibold">{col.sourceType}</span>
-                      </div>
-                      <div className="p-1.5 rounded bg-slate-900/80 border border-slate-800 font-mono">
-                        <span className="text-[9px] text-slate-400 block font-sans">Target PySpark:</span>
-                        <span className="text-cyan-300 font-semibold">{col.targetSparkType}</span>
-                      </div>
-                    </div>
+                    <button
+                      onClick={copyStructType}
+                      className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-[11px] font-medium flex items-center gap-1.5 transition-colors border border-slate-700"
+                      title="Copy schema as PySpark StructType code"
+                    >
+                      {copiedSchema ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 text-slate-400" />}
+                      <span>{copiedSchema ? 'Copied' : 'Copy Struct'}</span>
+                    </button>
+                  </div>
 
-                    {col.riskReason && (
-                      <div className="text-[10px] text-slate-300 mt-1 flex items-start gap-1.5 bg-slate-900/60 p-2 rounded-lg">
-                        <span className="text-amber-400 font-bold shrink-0">⚠</span>
-                        <div>
-                          <p>{col.riskReason}</p>
-                          {col.recommendedMitigation && (
-                            <p className="text-cyan-300 mt-1 font-mono text-[9px]">
-                              Mitigation: {col.recommendedMitigation}
-                            </p>
+                  {/* Columns List */}
+                  <div className="space-y-2">
+                    {schemaValidation.columns
+                      .filter(col => {
+                        if (schemaFilter === 'high') return col.riskLevel === 'high';
+                        if (schemaFilter === 'risks') return col.riskLevel !== 'safe';
+                        return true;
+                      })
+                      .map((col, idx) => (
+                        <div
+                          key={idx}
+                          className={`p-2.5 rounded-xl border transition-all ${
+                            col.riskLevel === 'high'
+                              ? 'bg-rose-950/20 border-rose-500/40'
+                              : col.riskLevel === 'warning'
+                              ? 'bg-amber-950/15 border-amber-500/30'
+                              : col.riskLevel === 'low'
+                              ? 'bg-blue-950/15 border-blue-500/30'
+                              : 'bg-slate-950 border-slate-800/80'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-mono text-xs font-bold text-white">{col.columnName}</span>
+                              {col.nullable && (
+                                <span className="text-[9px] px-1 py-0.2 rounded bg-slate-800 text-slate-400">null</span>
+                              )}
+                            </div>
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                              col.riskLevel === 'high'
+                                ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                                : col.riskLevel === 'warning'
+                                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                              : col.riskLevel === 'low'
+                                ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40'
+                                : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                            }`}>
+                              {col.riskLevel}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-1.5 text-[11px] mb-1">
+                            <div className="p-1 rounded bg-slate-900/80 border border-slate-800 font-mono">
+                              <span className="text-[9px] text-slate-400 block font-sans">Source ({job.targetPlatform || 'Warehouse'}):</span>
+                              <span className="text-amber-300 font-semibold">{col.sourceType}</span>
+                            </div>
+                            <div className="p-1 rounded bg-slate-900/80 border border-slate-800 font-mono">
+                              <span className="text-[9px] text-slate-400 block font-sans">Target PySpark:</span>
+                              <span className="text-cyan-300 font-semibold">{col.targetSparkType}</span>
+                            </div>
+                          </div>
+
+                          {col.riskReason && (
+                            <div className="text-[10px] text-slate-300 mt-1 flex items-start gap-1.5 bg-slate-900/60 p-1.5 rounded-lg">
+                              <span className="text-amber-400 font-bold shrink-0">⚠</span>
+                              <div>
+                                <p>{col.riskReason}</p>
+                                {col.recommendedMitigation && (
+                                  <p className="text-cyan-300 mt-0.5 font-mono text-[9px]">
+                                    Mitigation: {col.recommendedMitigation}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
                           )}
                         </div>
-                      </div>
-                    )}
+                      ))}
                   </div>
-                ))}
+                </div>
+              )}
             </div>
 
-            {/* Recommendations Footer */}
-            <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-1.5">
-              <span className="text-[11px] font-bold text-slate-200 block uppercase tracking-wider">
-                Type Mitigation Recommendations
-              </span>
-              {schemaValidation.recommendations.map((rec, i) => (
-                <div key={i} className="text-[11px] text-slate-400 flex items-start gap-1.5">
-                  <span className="text-emerald-400 font-bold">•</span>
-                  <span>{rec}</span>
+            {/* 4. Generated PySpark StructType Preview (Collapsible Slide Window) */}
+            <div className="border border-slate-800 rounded-xl overflow-hidden bg-slate-950/40">
+              <button
+                onClick={() => toggleSection('schemaStruct')}
+                className="w-full p-2.5 bg-slate-950 flex items-center justify-between text-left hover:bg-slate-900 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <FileCode className="w-3.5 h-3.5 text-cyan-400" />
+                  <span className="font-semibold text-slate-200">PySpark StructType DDL</span>
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-cyan-950/60 text-cyan-300 border border-cyan-500/30">
+                    Schema Code
+                  </span>
                 </div>
-              ))}
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${openSections.schemaStruct ? 'rotate-0' : '-rotate-90'}`} />
+              </button>
+
+              {openSections.schemaStruct && (
+                <div className="p-3 border-t border-slate-800/80 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-slate-400">Explicit Schema for DataFrame Reads:</span>
+                    <button
+                      onClick={copyStructType}
+                      className="text-[10px] text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
+                    >
+                      {copiedSchema ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                      <span>{copiedSchema ? 'Copied' : 'Copy'}</span>
+                    </button>
+                  </div>
+                  <pre className="p-2.5 rounded-lg bg-slate-950 border border-slate-800 text-[10px] font-mono text-cyan-300 overflow-x-auto max-h-48 scrollbar-thin">
+                    {`import pyspark.sql.types as T\n\n${targetComponent?.name || 'schema'}_schema = T.StructType([\n` +
+                      schemaValidation.columns.map(c => `    T.StructField("${c.columnName}", ${c.targetSparkType}, ${c.nullable})`).join(',\n') +
+                      '\n])'}
+                  </pre>
+                </div>
+              )}
+            </div>
+
+            {/* 5. Type Mitigation Recommendations (Collapsible Slide Window) */}
+            <div className="border border-slate-800 rounded-xl overflow-hidden bg-slate-950/40">
+              <button
+                onClick={() => toggleSection('schemaRecommendations')}
+                className="w-full p-2.5 bg-slate-950 flex items-center justify-between text-left hover:bg-slate-900 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <Zap className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="font-semibold text-slate-200">Mitigation Recommendations</span>
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                    {schemaValidation.recommendations.length} items
+                  </span>
+                </div>
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${openSections.schemaRecommendations ? 'rotate-0' : '-rotate-90'}`} />
+              </button>
+
+              {openSections.schemaRecommendations && (
+                <div className="p-3 border-t border-slate-800/80 space-y-1.5">
+                  {schemaValidation.recommendations.map((rec, i) => (
+                    <div key={i} className="text-[11px] text-slate-400 flex items-start gap-1.5">
+                      <span className="text-emerald-400 font-bold">•</span>
+                      <span>{rec}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}

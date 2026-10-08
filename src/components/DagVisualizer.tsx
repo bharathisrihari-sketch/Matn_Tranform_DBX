@@ -32,7 +32,14 @@ import {
   Zap,
   FolderTree,
   PanelLeftClose,
-  PanelLeft
+  PanelLeft,
+  ChevronDown,
+  ChevronsDownUp,
+  Sliders,
+  HelpCircle,
+  Maximize,
+  Columns,
+  FileCode
 } from 'lucide-react';
 import { MatillionJob, MatillionComponent } from '../types/matillion';
 
@@ -90,6 +97,13 @@ export const DagVisualizer: React.FC<DagVisualizerProps> = ({
   const [isTransformGroupCollapsed, setIsTransformGroupCollapsed] = useState(false);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [exportingStatus, setExportingStatus] = useState<string | null>(null);
+
+  // Dropdown & Help Menu States (consolidates Inspector, Complexity, and Schema)
+  const [insightsMenuOpen, setInsightsMenuOpen] = useState(false);
+  const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
+  const [layoutDropdownOpen, setLayoutDropdownOpen] = useState(false);
+  const [canvasDropdownOpen, setCanvasDropdownOpen] = useState(false);
+  const [showHowToMaximizeHelp, setShowHowToMaximizeHelp] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -520,95 +534,131 @@ export const DagVisualizer: React.FC<DagVisualizerProps> = ({
     }`}>
       
       {/* 
-        COMBINED 1-LINE AND CONCISE TOOLBAR 
-        Unifies: Job Name/Type + Complexity + Schema + Batch Opt + Grouping + Search + Categories + Zoom + Export + Files + Layout + Fullscreen Toggle
+        SIMPLIFIED UNIFIED TOOLBAR:
+        1) Removed duplicate headers (job title/type retained only in top Navbar)
+        2) Sub-headers moved to Dropdown Mode: Pipeline Insights, Stage Filter (ALL/READ/TRANSFORM/JOIN/FILTER/WRITE), Canvas & Zoom, Layout & Views
+        3) Collapse / Collide icon placed right next to EVERY dropdown
+        4) Category filter ALL, READ, TRANSFORM moved to dropdown mode
       */}
-      <div className="h-11 px-2.5 sm:px-3 bg-slate-900 border-b border-slate-800 flex items-center justify-between gap-1.5 shrink-0 z-20 overflow-x-auto scrollbar-none whitespace-nowrap">
+      <div className="h-11 px-2.5 sm:px-3 bg-slate-900 border-b border-slate-800 flex items-center justify-between gap-2 shrink-0 z-20 overflow-x-auto scrollbar-none whitespace-nowrap">
         
-        {/* Left Section: Job Name + Badges (Complexity, Schema, Batch Opt, Group) */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          
-          {/* Job Title & Type Pill */}
-          <div className="flex items-center gap-1.5 pr-1 border-r border-slate-800">
-            <span className="font-bold text-white text-xs truncate max-w-[130px] sm:max-w-[180px]" title={job.name}>
-              {job.name}
-            </span>
-            <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold uppercase tracking-wider ${
-              job.jobType === 'Transformation'
-                ? 'bg-blue-500/15 text-blue-400 border border-blue-500/30'
-                : 'bg-purple-500/15 text-purple-400 border border-purple-500/30'
-            }`}>
-              {job.jobType}
-            </span>
+        {/* Left Section: Pipeline Insights Dropdown + Collapse/Collide Icon */}
+        <div className="flex items-center gap-1 shrink-0">
+          <div className="relative">
+            <button
+              onClick={() => {
+                setInsightsMenuOpen(!insightsMenuOpen);
+                setCategoryDropdownOpen(false);
+                setLayoutDropdownOpen(false);
+                setCanvasDropdownOpen(false);
+              }}
+              className="px-2.5 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer border border-cyan-500/30 bg-slate-950 hover:bg-slate-800 text-cyan-300 shadow-sm"
+              title="Pipeline Insights: Complexity, Schema, Batch Optimizer, Inspector"
+            >
+              <Gauge className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Pipeline Insights</span>
+              <span className={`px-1 py-0.2 rounded text-[9px] font-mono border ${complexityBadgeBg}`}>
+                {complexityScore}/100
+              </span>
+              <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${insightsMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {insightsMenuOpen && (
+              <div 
+                className="absolute left-0 top-full mt-1.5 w-60 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-1.5 z-40 space-y-1 font-sans"
+                onClick={() => setInsightsMenuOpen(false)}
+              >
+                <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800 flex items-center justify-between">
+                  <span>Pipeline Insights & Audits</span>
+                  <span className="text-cyan-400 font-mono">{complexityLevel}</span>
+                </div>
+
+                <button
+                  onClick={() => {
+                    if (onOpenComplexity) onOpenComplexity();
+                    else if (onToggleInspector && !showInspector) onToggleInspector();
+                  }}
+                  className="w-full text-left px-2 py-1.5 rounded-lg text-xs hover:bg-slate-800 flex items-center justify-between text-slate-200 group transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <Gauge className="w-3.5 h-3.5 text-cyan-400" />
+                    <span className="font-medium">Conversion Complexity</span>
+                  </div>
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-cyan-950/60 text-cyan-300 border border-cyan-500/30">
+                    {complexityScore}/100
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    if (onOpenSchema) onOpenSchema();
+                    else if (onToggleInspector && !showInspector) onToggleInspector();
+                  }}
+                  className="w-full text-left px-2 py-1.5 rounded-lg text-xs hover:bg-slate-800 flex items-center justify-between text-slate-200 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                    <span className="font-medium">Schema Type Validation</span>
+                  </div>
+                  <span className="text-[10px] font-mono text-emerald-400">Preview</span>
+                </button>
+
+                {batchOptActive && (
+                  <button
+                    onClick={() => {
+                      if (onOpenBatchOpt) onOpenBatchOpt();
+                      else if (onToggleInspector && !showInspector) onToggleInspector();
+                    }}
+                    className="w-full text-left px-2 py-1.5 rounded-lg text-xs hover:bg-slate-800 flex items-center justify-between text-slate-200 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Zap className="w-3.5 h-3.5 text-amber-400" />
+                      <span className="font-medium">Batch Optimizer</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-amber-400">Cluster Opt</span>
+                  </button>
+                )}
+
+                <button
+                  onClick={() => {
+                    if (onToggleInspector) onToggleInspector();
+                  }}
+                  className="w-full text-left px-2 py-1.5 rounded-lg text-xs hover:bg-slate-800 flex items-center justify-between text-slate-200 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <Sliders className="w-3.5 h-3.5 text-orange-400" />
+                    <span className="font-medium">{showInspector ? 'Hide Inspector Panel' : 'Show Component Inspector'}</span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 font-mono">{showInspector ? 'Open' : 'Closed'}</span>
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* Complexity Score Badge */}
-          <button
-            onClick={onOpenComplexity}
-            className={`px-2 py-0.5 rounded text-[10px] font-semibold flex items-center gap-1 transition-all hover:scale-105 cursor-pointer border ${complexityBadgeBg}`}
-            title="Conversion Complexity Score"
-          >
-            <Gauge className="w-3 h-3" />
-            <span>Complexity: <strong className="font-mono">{complexityScore}/100</strong></span>
-          </button>
-
-          {/* Schema Preview Badge */}
-          <button
-            onClick={onOpenSchema}
-            className="px-2 py-0.5 rounded text-[10px] font-semibold flex items-center gap-1 border border-emerald-500/30 bg-emerald-950/30 text-emerald-300 hover:bg-emerald-900/40 transition-colors cursor-pointer"
-            title="Schema Validation Preview"
-          >
-            <ShieldCheck className="w-3 h-3 text-emerald-400" />
-            <span>Schema</span>
-          </button>
-
-          {/* Batch Optimizer Badge */}
-          {batchOptActive && (
+          {/* Collapse / Collide icon placed next to Pipeline Insights dropdown */}
+          {onToggleInspector && (
             <button
-              onClick={onOpenBatchOpt}
-              className="px-2 py-0.5 rounded text-[10px] font-semibold flex items-center gap-1 border border-amber-500/30 bg-amber-950/30 text-amber-300 hover:bg-amber-900/40 transition-colors cursor-pointer"
-              title="Batch Optimizer Auto-Partitioning"
-            >
-              <Zap className="w-3 h-3 text-amber-400" />
-              <span>Batch Opt</span>
-            </button>
-          )}
-
-          {/* Expand / Collapse Transformation Group Toggle */}
-          {canGroupTransforms && (
-            <button
-              onClick={() => setIsTransformGroupCollapsed(!isTransformGroupCollapsed)}
-              className={`px-2 py-0.5 rounded text-[10px] font-semibold flex items-center gap-1 border transition-all cursor-pointer ${
-                isTransformGroupCollapsed
-                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-sm'
-                  : 'bg-slate-950 text-slate-300 border-slate-800 hover:border-slate-700'
+              onClick={onToggleInspector}
+              className={`p-1.5 rounded-md border text-xs transition-colors shadow-sm flex items-center justify-center ${
+                showInspector
+                  ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 hover:bg-cyan-500/30'
+                  : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white hover:border-slate-700'
               }`}
-              title={isTransformGroupCollapsed ? 'Expand transformation sub-components' : 'Collapse transformation sub-components to simplify view'}
+              title={showInspector ? "Collapse / Collide Inspector Menu" : "Expand Inspector Menu"}
             >
-              {isTransformGroupCollapsed ? (
-                <>
-                  <FolderOpen className="w-3 h-3 text-amber-400" />
-                  <span>Expand ({transformComponents.length})</span>
-                </>
-              ) : (
-                <>
-                  <Package className="w-3 h-3 text-slate-400" />
-                  <span>Collapse Group</span>
-                </>
-              )}
+              <ChevronsDownUp className={`w-3.5 h-3.5 text-cyan-400 transition-transform ${showInspector ? 'rotate-0' : 'rotate-180'}`} />
             </button>
           )}
         </div>
 
-        {/* Middle Section: Search + Category Chips */}
+        {/* Middle Section: Search + Stage Filter Dropdown (Moved ALL, READ, TRANSFORM to dropdown) + Collapse/Collide Icon */}
         <div className="flex items-center gap-1.5 shrink-0">
-          
           {/* Compact Search Bar */}
-          <div className="relative w-32 sm:w-40 lg:w-48">
+          <div className="relative w-28 sm:w-36 lg:w-44">
             <Search className="w-3 h-3 text-slate-400 absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
-              placeholder="Search components..."
+              placeholder="Search nodes..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-slate-950 border border-slate-800 rounded pl-6 pr-5 py-0.5 text-[10px] sm:text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-500"
@@ -623,83 +673,150 @@ export const DagVisualizer: React.FC<DagVisualizerProps> = ({
             )}
           </div>
 
-          {/* Category Chips */}
-          <div className="hidden xl:flex items-center gap-0.5 bg-slate-950 p-0.5 rounded border border-slate-800">
-            {['ALL', 'READ', 'TRANSFORM', 'JOIN', 'FILTER', 'WRITE'].map(cat => (
-              <button
-                key={cat}
-                onClick={() => setSelectedTypeFilter(cat)}
-                className={`px-1.5 py-0.5 rounded text-[9px] font-semibold transition-all ${
-                  selectedTypeFilter === cat
-                    ? 'bg-cyan-500 text-slate-950 font-bold'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Right Section: Zoom + Export + Files + Layout + FULLSCREEN TOGGLE */}
-        <div className="flex items-center gap-1 shrink-0">
-          
-          {/* Zoom & Fit Control Pills */}
-          <div className="flex items-center gap-0.5 bg-slate-950 border border-slate-800 rounded p-0.5">
-            <button
-              onClick={() => setZoom(prev => Math.min(Number((prev + 0.15).toFixed(2)), 2.2))}
-              className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
-              title="Zoom In"
-            >
-              <ZoomIn className="w-3 h-3" />
-            </button>
-            
-            <button
-              onClick={() => setZoom(prev => Math.max(Number((prev - 0.15).toFixed(2)), 0.3))}
-              className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
-              title="Zoom Out"
-            >
-              <ZoomOut className="w-3 h-3" />
-            </button>
-
-            <button
-              onClick={handleZoomToFit}
-              className="px-1.5 py-0.5 rounded hover:bg-slate-800 text-slate-300 text-[9px] font-semibold flex items-center gap-0.5 transition-colors text-cyan-400"
-              title="Fit Entire Graph into View"
-            >
-              <Maximize2 className="w-2.5 h-2.5" />
-              <span>Fit</span>
-            </button>
-
-            <button
-              onClick={() => {
-                setZoom(1);
-                setPan({ x: 20, y: 20 });
-              }}
-              className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
-              title="Reset (100%)"
-            >
-              <RotateCcw className="w-3 h-3" />
-            </button>
-
-            <span className="text-[9px] font-mono text-slate-400 px-1 select-none">
-              {Math.round(zoom * 100)}%
-            </span>
-          </div>
-
-          {/* Export DAG Menu */}
+          {/* Category Filter Dropdown (Moved ALL, READ, TRANSFORM, JOIN, FILTER, WRITE to dropdown mode) */}
           <div className="relative">
             <button
-              onClick={() => setExportMenuOpen(!exportMenuOpen)}
-              className="px-2 py-0.5 rounded bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 text-[10px] font-semibold flex items-center gap-1 transition-colors"
-              title="Export DAG visualization as PNG or SVG"
+              onClick={() => {
+                setCategoryDropdownOpen(!categoryDropdownOpen);
+                setInsightsMenuOpen(false);
+                setLayoutDropdownOpen(false);
+                setCanvasDropdownOpen(false);
+              }}
+              className="px-2 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer border border-slate-700/80 bg-slate-950 hover:bg-slate-800 text-slate-200 shadow-sm"
+              title="Filter pipeline stages: ALL, READ, TRANSFORM, JOIN, FILTER, WRITE"
             >
-              <Download className="w-3 h-3 text-cyan-400" />
-              <span>Export</span>
+              <Filter className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Stage: <strong className="text-cyan-300 font-bold">{selectedTypeFilter}</strong></span>
+              <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${categoryDropdownOpen ? 'rotate-180' : ''}`} />
             </button>
 
-            {exportMenuOpen && (
-              <div className="absolute right-0 top-full mt-1 w-40 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-1 z-30 space-y-0.5 font-sans">
+            {categoryDropdownOpen && (
+              <div 
+                className="absolute left-0 top-full mt-1.5 w-44 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-1 z-40 space-y-0.5 font-sans"
+                onClick={() => setCategoryDropdownOpen(false)}
+              >
+                <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800">
+                  Pipeline Stage Filter
+                </div>
+                {[
+                  { id: 'ALL', label: 'All Stages', icon: Layers, desc: 'All pipeline components' },
+                  { id: 'READ', label: 'Read (Inputs)', icon: Database, desc: 'Table Input / S3 Loader' },
+                  { id: 'TRANSFORM', label: 'Transform', icon: Calculator, desc: 'Calculators & Expressions' },
+                  { id: 'JOIN', label: 'Join & AQE', icon: GitMerge, desc: 'AQE Adaptive Joins' },
+                  { id: 'FILTER', label: 'Filter & Rules', icon: Filter, desc: 'Row validations' },
+                  { id: 'WRITE', label: 'Write (Outputs)', icon: Save, desc: 'Delta Lake Output' }
+                ].map(stage => {
+                  const Icon = stage.icon;
+                  const isActive = selectedTypeFilter === stage.id;
+                  return (
+                    <button
+                      key={stage.id}
+                      onClick={() => setSelectedTypeFilter(stage.id)}
+                      className={`w-full text-left px-2 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors ${
+                        isActive ? 'bg-cyan-500/20 text-cyan-300 font-bold' : 'text-slate-300 hover:bg-slate-800'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Icon className="w-3.5 h-3.5 text-cyan-400" />
+                        <span>{stage.label}</span>
+                      </div>
+                      {isActive && <Check className="w-3 h-3 text-cyan-400" />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Collapse / Collide icon placed next to Stage Filter dropdown */}
+          {canGroupTransforms && (
+            <button
+              onClick={() => setIsTransformGroupCollapsed(!isTransformGroupCollapsed)}
+              className={`p-1.5 rounded-md border text-xs transition-colors shadow-sm flex items-center justify-center ${
+                isTransformGroupCollapsed
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-sm'
+                  : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white hover:border-slate-700'
+              }`}
+              title={isTransformGroupCollapsed ? "Expand Collapsed Transforms Group" : "Collapse / Collide Transforms Group"}
+            >
+              <ChevronsDownUp className={`w-3.5 h-3.5 text-amber-400 transition-transform ${isTransformGroupCollapsed ? 'rotate-180' : 'rotate-0'}`} />
+            </button>
+          )}
+        </div>
+
+        {/* Right Section: Canvas & Zoom Dropdown + Layout & Views Dropdown + Collapse/Collide Icons */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          
+          {/* DROPDOWN: Canvas & Zoom Controls */}
+          <div className="relative">
+            <button
+              onClick={() => {
+                setCanvasDropdownOpen(!canvasDropdownOpen);
+                setInsightsMenuOpen(false);
+                setCategoryDropdownOpen(false);
+                setLayoutDropdownOpen(false);
+              }}
+              className="px-2 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer border border-slate-700/80 bg-slate-950 hover:bg-slate-800 text-slate-200 shadow-sm"
+              title="Canvas Zoom, Fit, and Export options"
+            >
+              <ZoomIn className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Canvas ({Math.round(zoom * 100)}%)</span>
+              <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${canvasDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {canvasDropdownOpen && (
+              <div 
+                className="absolute right-0 top-full mt-1.5 w-48 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-1 z-40 space-y-0.5 font-sans"
+                onClick={() => setCanvasDropdownOpen(false)}
+              >
+                <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800 flex items-center justify-between">
+                  <span>Zoom & Export</span>
+                  <span className="font-mono text-cyan-400">{Math.round(zoom * 100)}%</span>
+                </div>
+
+                <button
+                  onClick={handleZoomToFit}
+                  className="w-full text-left px-2 py-1.5 rounded-lg text-xs text-slate-200 hover:bg-slate-800 flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-2">
+                    <Maximize2 className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>Fit Graph to View</span>
+                  </div>
+                  <span className="text-[10px] font-mono text-slate-500">Auto</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setZoom(1);
+                    setPan({ x: 20, y: 20 });
+                  }}
+                  className="w-full text-left px-2 py-1.5 rounded-lg text-xs text-slate-200 hover:bg-slate-800 flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-2">
+                    <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Reset View</span>
+                  </div>
+                  <span className="text-[10px] font-mono text-slate-500">100%</span>
+                </button>
+
+                <button
+                  onClick={() => setZoom(prev => Math.min(Number((prev + 0.15).toFixed(2)), 2.2))}
+                  className="w-full text-left px-2 py-1.5 rounded-lg text-xs text-slate-200 hover:bg-slate-800 flex items-center gap-2"
+                >
+                  <ZoomIn className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Zoom In (+15%)</span>
+                </button>
+
+                <button
+                  onClick={() => setZoom(prev => Math.max(Number((prev - 0.15).toFixed(2)), 0.3))}
+                  className="w-full text-left px-2 py-1.5 rounded-lg text-xs text-slate-200 hover:bg-slate-800 flex items-center gap-2"
+                >
+                  <ZoomOut className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Zoom Out (-15%)</span>
+                </button>
+
+                <div className="border-t border-slate-800 my-1" />
+
                 <button
                   onClick={handleExportPNG}
                   className="w-full text-left px-2 py-1.5 rounded-lg text-xs text-slate-200 hover:bg-slate-800 flex items-center gap-2"
@@ -707,6 +824,7 @@ export const DagVisualizer: React.FC<DagVisualizerProps> = ({
                   <FileImage className="w-3.5 h-3.5 text-orange-400" />
                   <span>Export as PNG</span>
                 </button>
+
                 <button
                   onClick={handleExportSVG}
                   className="w-full text-left px-2 py-1.5 rounded-lg text-xs text-slate-200 hover:bg-slate-800 flex items-center gap-2"
@@ -718,91 +836,195 @@ export const DagVisualizer: React.FC<DagVisualizerProps> = ({
             )}
           </div>
 
-          {/* Files Drawer Toggle */}
-          {onToggleFilesDrawer && !isFullscreen && (
-            <button
-              onClick={onToggleFilesDrawer}
-              className={`px-2 py-0.5 rounded border text-[10px] font-semibold flex items-center gap-1 transition-colors ${
-                showFilesDrawer
-                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                  : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
-              }`}
-              title="Toggle Matillion Files Drawer"
-            >
-              <FolderTree className="w-3 h-3" />
-              <span className="hidden sm:inline">Files</span>
-            </button>
-          )}
-
-          {/* Layout Mode (Split / DAG / Code) */}
-          {onLayoutModeChange && !isFullscreen && (
-            <div className="flex items-center bg-slate-950 rounded p-0.5 border border-slate-800">
-              <button
-                onClick={() => onLayoutModeChange('split')}
-                className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${
-                  layoutMode === 'split' ? 'bg-orange-500/20 text-orange-400' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                Split
-              </button>
-              <button
-                onClick={() => onLayoutModeChange('dag')}
-                className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${
-                  layoutMode === 'dag' ? 'bg-orange-500/20 text-orange-400' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                DAG
-              </button>
-              <button
-                onClick={() => onLayoutModeChange('code')}
-                className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${
-                  layoutMode === 'code' ? 'bg-orange-500/20 text-orange-400' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                Code
-              </button>
-            </div>
-          )}
-
-          {/* Inspector Panel Toggle */}
-          {onToggleInspector && !isFullscreen && (
-            <button
-              onClick={onToggleInspector}
-              className={`p-1 rounded text-slate-400 hover:text-white transition-colors ${
-                showInspector ? 'bg-slate-800 text-white' : 'bg-slate-950'
-              }`}
-              title={showInspector ? 'Hide Inspector Panel' : 'Show Inspector Panel'}
-            >
-              {showInspector ? <PanelLeftClose className="w-3.5 h-3.5" /> : <PanelLeft className="w-3.5 h-3.5" />}
-            </button>
-          )}
-
-          {/* 
-            TOGGLE FULL SCREEN VIEW FOR DRAG TO PAN
-          */}
+          {/* Collapse / Collide icon placed next to Canvas Dropdown (Collapses Zoom to 100% Fit) */}
           <button
-            onClick={() => setIsFullscreen(!isFullscreen)}
-            className={`px-2.5 py-0.5 rounded text-[10px] font-bold flex items-center gap-1.5 transition-all cursor-pointer border shadow-sm ${
-              isFullscreen
-                ? 'bg-orange-500 text-white border-orange-400 ring-2 ring-orange-500/30'
-                : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 hover:bg-cyan-500/30'
-            }`}
-            title={isFullscreen ? 'Exit Fullscreen (or press Esc)' : 'Toggle Full Screen View for Drag to Pan'}
+            onClick={handleZoomToFit}
+            className="p-1.5 rounded-md border border-slate-800 bg-slate-950 hover:bg-slate-800 text-cyan-400 hover:text-white text-xs transition-colors shadow-sm cursor-pointer"
+            title="Collapse / Fit Entire Graph into View (100% Zoom Reset)"
           >
-            {isFullscreen ? (
-              <>
-                <Minimize2 className="w-3 h-3" />
-                <span>Exit Fullscreen</span>
-              </>
-            ) : (
-              <>
-                <Maximize2 className="w-3 h-3" />
-                <span>Fullscreen Pan</span>
-              </>
-            )}
+            <ChevronsDownUp className="w-3.5 h-3.5" />
           </button>
 
+          {/* DROPDOWN: Layout & Workspace Views */}
+          <div className="relative">
+            <button
+              onClick={() => {
+                setLayoutDropdownOpen(!layoutDropdownOpen);
+                setInsightsMenuOpen(false);
+                setCategoryDropdownOpen(false);
+                setCanvasDropdownOpen(false);
+              }}
+              className={`px-2 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer border shadow-sm ${
+                layoutMode === 'dag'
+                  ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400'
+                  : 'bg-slate-950 hover:bg-slate-800 text-slate-200 border-slate-700/80'
+              }`}
+              title="Layout, Code View, Folders and Fullscreen modes"
+            >
+              <Maximize className="w-3.5 h-3.5 text-orange-400" />
+              <span>Layout & Views</span>
+              <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${layoutDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {layoutDropdownOpen && (
+              <div 
+                className="absolute right-0 top-full mt-1.5 w-52 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-1 z-40 space-y-0.5 font-sans"
+                onClick={() => setLayoutDropdownOpen(false)}
+              >
+                <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800">
+                  Workspace Layout
+                </div>
+
+                {onLayoutModeChange && (
+                  <button
+                    onClick={() => onLayoutModeChange(layoutMode === 'dag' ? 'split' : 'dag')}
+                    className={`w-full text-left px-2 py-1.5 rounded-lg text-xs flex items-center justify-between ${
+                      layoutMode === 'dag' ? 'bg-cyan-500/20 text-cyan-300 font-bold' : 'text-slate-200 hover:bg-slate-800'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Maximize className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>Maximize DAG (100%)</span>
+                    </div>
+                    {layoutMode === 'dag' && <Check className="w-3 h-3 text-cyan-400" />}
+                  </button>
+                )}
+
+                {onLayoutModeChange && (
+                  <button
+                    onClick={() => onLayoutModeChange('split')}
+                    className={`w-full text-left px-2 py-1.5 rounded-lg text-xs flex items-center justify-between ${
+                      layoutMode === 'split' ? 'bg-orange-500/20 text-orange-300 font-bold' : 'text-slate-200 hover:bg-slate-800'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Columns className="w-3.5 h-3.5 text-orange-400" />
+                      <span>Split View (DAG + Code)</span>
+                    </div>
+                    {layoutMode === 'split' && <Check className="w-3 h-3 text-orange-400" />}
+                  </button>
+                )}
+
+                {onLayoutModeChange && (
+                  <button
+                    onClick={() => onLayoutModeChange(layoutMode === 'code' ? 'dag' : 'code')}
+                    className={`w-full text-left px-2 py-1.5 rounded-lg text-xs flex items-center justify-between ${
+                      layoutMode === 'code' ? 'bg-amber-500/20 text-amber-300 font-bold' : 'text-slate-200 hover:bg-slate-800'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <FileCode className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Pure Code View</span>
+                    </div>
+                    {layoutMode === 'code' && <Check className="w-3 h-3 text-amber-400" />}
+                  </button>
+                )}
+
+                {onToggleFilesDrawer && (
+                  <button
+                    onClick={onToggleFilesDrawer}
+                    className={`w-full text-left px-2 py-1.5 rounded-lg text-xs flex items-center justify-between ${
+                      showFilesDrawer ? 'bg-amber-500/20 text-amber-300 font-bold' : 'text-slate-200 hover:bg-slate-800'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <FolderTree className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Folders Drawer</span>
+                    </div>
+                    {showFilesDrawer && <span className="text-[10px] text-amber-300">Open</span>}
+                  </button>
+                )}
+
+                <div className="border-t border-slate-800 my-1" />
+
+                <button
+                  onClick={() => setIsFullscreen(!isFullscreen)}
+                  className="w-full text-left px-2 py-1.5 rounded-lg text-xs text-slate-200 hover:bg-slate-800 flex items-center gap-2"
+                >
+                  <Maximize2 className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>{isFullscreen ? 'Exit Fullscreen' : 'Fullscreen Canvas Mode'}</span>
+                </button>
+
+                <button
+                  onClick={() => setShowHowToMaximizeHelp(true)}
+                  className="w-full text-left px-2 py-1.5 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-800 flex items-center gap-2"
+                >
+                  <HelpCircle className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Navigation Guide</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Collapse / Collide icon placed next to Layout Dropdown (Toggles Maximize DAG / Collapses Code View) */}
+          {onLayoutModeChange && (
+            <button
+              onClick={() => onLayoutModeChange(layoutMode === 'dag' ? 'split' : 'dag')}
+              className={`p-1.5 rounded-md border text-xs transition-colors shadow-sm flex items-center justify-center ${
+                layoutMode === 'dag'
+                  ? 'bg-cyan-500/25 text-cyan-300 border-cyan-400'
+                  : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white hover:border-slate-700'
+              }`}
+              title={layoutMode === 'dag' ? "Restore Split View (Expand Code View)" : "Collapse / Collide Code View (Maximize DAG 100%)"}
+            >
+              <ChevronsDownUp className={`w-3.5 h-3.5 text-cyan-400 transition-transform ${layoutMode === 'dag' ? 'rotate-180' : 'rotate-0'}`} />
+            </button>
+          )}
+
         </div>
+
+        {/* Floating Help Modal: How to Maximize DAG & Navigation Controls */}
+        {showHowToMaximizeHelp && (
+          <div className="absolute right-3 top-12 z-50 w-80 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-3.5 space-y-2.5 text-xs text-slate-200 animate-in fade-in zoom-in-95 font-sans">
+            <div className="flex items-center justify-between pb-1.5 border-b border-slate-800">
+              <div className="flex items-center gap-1.5 font-bold text-white">
+                <HelpCircle className="w-4 h-4 text-cyan-400" />
+                <span>Controls to Maximize the DAG</span>
+              </div>
+              <button onClick={() => setShowHowToMaximizeHelp(false)} className="text-slate-400 hover:text-white">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
+                <span className="font-semibold text-cyan-300 flex items-center gap-1">
+                  <Maximize className="w-3.5 h-3.5" /> 1. Maximize DAG Workspace
+                </span>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Click <strong className="text-white">"Maximize DAG"</strong> in the top toolbar to hide the Databricks Code View and expand the DAG to 100% of the workspace.
+                </p>
+              </div>
+
+              <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
+                <span className="font-semibold text-orange-300 flex items-center gap-1">
+                  <Maximize2 className="w-3.5 h-3.5" /> 2. Fullscreen Canvas Mode
+                </span>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Click <strong className="text-white">"Fullscreen Pan"</strong> (or press key <code className="text-cyan-300">F</code>) to take over the entire browser screen. Press <code className="text-cyan-300">Esc</code> to exit.
+                </p>
+              </div>
+
+              <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
+                <span className="font-semibold text-emerald-300 flex items-center gap-1">
+                  <FileCode className="w-3.5 h-3.5" /> 3. Code & Folder Toggles
+                </span>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Use <strong className="text-white">"View Code" / "Hide Code"</strong> and <strong className="text-white">"Folders"</strong> to slide panels in and out on demand.
+                </p>
+              </div>
+
+              <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
+                <span className="font-semibold text-purple-300 flex items-center gap-1">
+                  <Sliders className="w-3.5 h-3.5" /> 4. Menu Before DAG Toggle
+                </span>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Use <strong className="text-white">"Hide Menu" / "Show Menu"</strong> or the left slide rail to collapse the Inspector, Complexity & Schema menu before the DAG view.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
       </div>
 

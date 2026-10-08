@@ -15,7 +15,8 @@ import {
   Zap,
   Code2,
   HelpCircle,
-  ChevronDown
+  ChevronDown,
+  EyeOff
 } from 'lucide-react';
 import { MatillionJob, ConversionOptions } from '../types/matillion';
 import { ComplexityBreakdown } from '../services/complexityScorer';
@@ -33,7 +34,11 @@ interface GeminiChatModalProps {
   onClose: () => void;
   job: MatillionJob;
   options: ConversionOptions;
-  complexity: ComplexityBreakdown;
+  complexity: {
+    score: number;
+    rating: string;
+    summary?: string;
+  };
 }
 
 export const GeminiChatModal: React.FC<GeminiChatModalProps> = ({
@@ -47,20 +52,21 @@ export const GeminiChatModal: React.FC<GeminiChatModalProps> = ({
     {
       id: 'welcome',
       role: 'model',
-      text: `Hello! I am your **MatConvDBX AI Migration Copilot**. I can assist with converting your Matillion jobs to Databricks PySpark and Delta Live Tables (DLT).
+      text: `Hello! I am **Gemini Tranformx**, your specialized Matillion-to-Databricks AI Migration Copilot. I can assist with converting and optimizing your pipelines for Databricks PySpark and Delta Live Tables (DLT).
 
 Current active job: **${job.name}** (${job.jobType})
 Conversion Complexity Score: **${complexity.score}/100 (${complexity.rating})**
 
-How can I help you optimize or migrate this workflow today?`,
+How can I help you transform, validate, or optimize this pipeline today?`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedModel, setSelectedModel] = useState<'gemini-3.5-flash' | 'gemini-3.1-flash-lite' | 'gemini-3.1-pro-preview'>('gemini-3.5-flash');
+  const [selectedModel, setSelectedModel] = useState<'gemini-3.8-flash' | 'gemini-3.1-flash-lite' | 'gemini-3.1-pro-preview'>('gemini-3.8-flash');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isMinimized, setIsMinimized] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -70,13 +76,40 @@ How can I help you optimize or migrate this workflow today?`,
   };
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !isMinimized) {
       scrollToBottom();
       setTimeout(() => inputRef.current?.focus(), 100);
     }
-  }, [isOpen, messages]);
+  }, [isOpen, isMinimized, messages]);
 
   if (!isOpen) return null;
+
+  if (isMinimized) {
+    return (
+      <aside aria-label="Gemini Tranformx Assistant" className="fixed bottom-6 right-6 z-50 animate-in fade-in slide-in-from-bottom-2">
+        <div className="flex items-center gap-2 p-2 px-3.5 bg-slate-900 border border-slate-700 rounded-full shadow-2xl backdrop-blur-md">
+          <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-cyan-500 via-blue-600 to-indigo-600 flex items-center justify-center">
+            <Sparkles className="w-3.5 h-3.5 text-white" />
+          </div>
+          <span className="text-xs font-bold text-white tracking-tight">Gemini Tranformx</span>
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <button
+            onClick={() => setIsMinimized(false)}
+            className="px-2.5 py-1 rounded-full bg-cyan-500/20 text-cyan-300 text-[11px] font-bold hover:bg-cyan-500/30 transition-colors ml-1"
+          >
+            Show Chat
+          </button>
+          <button
+            onClick={onClose}
+            className="p-1 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            title="Hide Gemini Tranformx"
+          >
+            <EyeOff className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </aside>
+    );
+  }
 
   const handleSendMessage = async (textToSend?: string) => {
     const text = (textToSend || inputText).trim();
@@ -165,16 +198,16 @@ How can I help you optimize or migrate this workflow today?`,
         <div className="p-4 border-b border-slate-800 bg-slate-950 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-500 via-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
-              <Sparkles className="w-5 h-5 text-white" />
+              <Sparkles className="w-5 h-5 text-white animate-spin-slow" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-white tracking-tight">Gemini Migration Copilot</h3>
+                <h3 className="text-sm font-bold text-white tracking-tight">Gemini Tranformx</h3>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
-                  Multi-Turn
+                  AI Copilot
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400">Context aware &bull; {job.name}</p>
+              <p className="text-[11px] text-slate-400">Context-aware &bull; {job.name}</p>
             </div>
           </div>
 
@@ -188,8 +221,8 @@ How can I help you optimize or migrate this workflow today?`,
                 className="bg-transparent text-[11px] text-slate-200 font-medium px-1 py-0.5 rounded focus:outline-none cursor-pointer"
                 title="Select Gemini Model"
               >
-                <option value="gemini-3.5-flash" className="bg-slate-900 text-slate-200">
-                  gemini-3.5-flash (General)
+                <option value="gemini-3.8-flash" className="bg-slate-900 text-slate-200">
+                  gemini-3.8-flash (Recommended)
                 </option>
                 <option value="gemini-3.1-flash-lite" className="bg-slate-900 text-slate-200">
                   gemini-3.1-flash-lite (Fast)
@@ -200,6 +233,7 @@ How can I help you optimize or migrate this workflow today?`,
               </select>
             </div>
 
+            {/* Clear conversation */}
             <button
               onClick={() => {
                 setMessages([
@@ -217,9 +251,30 @@ How can I help you optimize or migrate this workflow today?`,
               <RotateCcw className="w-4 h-4" />
             </button>
 
+            {/* Minimize to bottom floating pill */}
+            <button
+              onClick={() => setIsMinimized(true)}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              title="Minimize to floating pill"
+            >
+              <Minimize2 className="w-4 h-4" />
+            </button>
+
+            {/* Explicit Hide Chatbot Toggle Button */}
+            <button
+              onClick={onClose}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 transition-colors shadow-sm"
+              title="Hide Gemini Tranformx Chatbot (Click toggle button to reopen anytime)"
+            >
+              <EyeOff className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Hide Chatbot</span>
+            </button>
+
+            {/* Close X Button */}
             <button
               onClick={onClose}
               className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              title="Close window"
             >
               <X className="w-4 h-4" />
             </button>

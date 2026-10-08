@@ -128,13 +128,15 @@ interface MatillionFolderViewProps {
   onSelectJob: (job: MatillionJob) => void;
   onOpenUpload: () => void;
   customFiles?: MatillionProjectFile[];
+  onClose?: () => void;
 }
 
 export const MatillionFolderView: React.FC<MatillionFolderViewProps> = ({
   currentJob,
   onSelectJob,
   onOpenUpload,
-  customFiles
+  customFiles,
+  onClose
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'Transformation' | 'Orchestration'>('all');
@@ -203,9 +205,20 @@ export const MatillionFolderView: React.FC<MatillionFolderViewProps> = ({
             <FolderOpen className="w-4 h-4 text-orange-400" />
             <h3 className="text-xs font-bold uppercase tracking-wider text-white">Matillion Project Files</h3>
           </div>
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">
-            {files.length} files
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">
+              {files.length} files
+            </span>
+            {onClose && (
+              <button
+                onClick={onClose}
+                className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                title="Hide Matillion Files Drawer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Search Option */}

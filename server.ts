@@ -22,16 +22,16 @@ const ai = new GoogleGenAI({
   },
 });
 
-// Chat API endpoint for multi-turn Gemini assistant
+// Chat API endpoint for multi-turn Gemini assistant (Gemini Tranformx)
 app.post('/api/chat', async (req, res) => {
   try {
-    const { messages, model = 'gemini-3.5-flash', jobContext } = req.body;
+    const { messages, model = 'gemini-3.8-flash', jobContext } = req.body;
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return res.status(400).json({ error: 'Messages array is required' });
     }
 
-    let systemInstruction = `You are the MatConvDBX AI Migration Copilot, an elite data engineering architect specialized in migrating Matillion ETL jobs to Databricks PySpark and Delta Live Tables (DLT).
+    let systemInstruction = `You are Gemini Tranformx (Gemini TransformX), an elite data engineering AI architect specialized in migrating Matillion ETL jobs to Databricks PySpark and Delta Live Tables (DLT).
 Your role:
 - Help users translate Matillion Orchestration and Transformation jobs to modern Apache Spark 3.5+ DataFrame code and Delta Live Tables.
 - Explain conversion decisions, data quality expectations (@dlt.expect_or_drop), and Delta Lake ACID merge strategies.
@@ -55,7 +55,7 @@ Your role:
     }));
 
     // Selected model
-    const selectedModel = model || 'gemini-3.5-flash';
+    const selectedModel = model || 'gemini-3.8-flash';
 
     const response = await ai.models.generateContent({
       model: selectedModel,

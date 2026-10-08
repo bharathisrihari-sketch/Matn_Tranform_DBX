@@ -36,6 +36,8 @@ interface NavbarProps {
   onToggleSidebar?: () => void;
   options: ConversionOptions;
   onOptionsChange: (newOptions: ConversionOptions) => void;
+  isGeminiChatOpen?: boolean;
+  onToggleGeminiChat?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -50,7 +52,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenExport,
   onToggleSidebar,
   options,
-  onOptionsChange
+  onOptionsChange,
+  isGeminiChatOpen,
+  onToggleGeminiChat
 }) => {
   return (
     <header className="border-b border-slate-800 bg-slate-900/95 backdrop-blur-md sticky top-0 z-40">
@@ -162,6 +166,23 @@ export const Navbar: React.FC<NavbarProps> = ({
             <UploadCloud className="w-3.5 h-3.5 text-orange-400" />
             <span className="hidden sm:inline">Import ZIP</span>
           </button>
+
+          {/* Gemini Tranformx Toggle Action */}
+          {onToggleGeminiChat && (
+            <button
+              onClick={onToggleGeminiChat}
+              className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-all ${
+                isGeminiChatOpen
+                  ? 'bg-gradient-to-r from-cyan-500/25 to-blue-500/25 text-cyan-300 border-cyan-400 shadow-sm shadow-cyan-500/20 ring-1 ring-cyan-400/40'
+                  : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white hover:border-cyan-500/40 hover:bg-slate-700'
+              }`}
+              title={isGeminiChatOpen ? 'Hide Gemini Tranformx Chatbot' : 'Open Gemini Tranformx AI Chatbot'}
+            >
+              <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+              <span className="hidden md:inline">Gemini Tranformx</span>
+              <span className="hidden sm:inline md:hidden">Tranformx</span>
+            </button>
+          )}
 
           <button
             onClick={onOpenExport}

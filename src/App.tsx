@@ -23,7 +23,10 @@ import {
   Gauge,
   Zap,
   FolderTree,
-  CheckSquare
+  CheckSquare,
+  EyeOff,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { SAMPLE_JOBS } from './data/samples';
 import { MatillionJob, MatillionComponent, ConversionOptions } from './types/matillion';
@@ -45,6 +48,7 @@ import { DocumentationPage } from './components/DocumentationPage';
 import { TestPage } from './components/TestPage';
 import { DownloadCodePage } from './components/DownloadCodePage';
 import { AboutContactsPage } from './components/AboutContactsPage';
+import { GeminiChatModal } from './components/GeminiChatModal';
 
 export default function App() {
   const [currentJob, setCurrentJob] = useState<MatillionJob>(SAMPLE_JOBS[0]);
@@ -82,7 +86,8 @@ export default function App() {
 
   const [showInspector, setShowInspector] = useState(true);
   const [inspectorTab, setInspectorTab] = useState<'component' | 'complexity' | 'schema' | 'options' | 'variables'>('component');
-  const [layoutMode, setLayoutMode] = useState<'split' | 'dag' | 'code'>('split');
+  // DBX Code View hidden by default, DAG maximized by default as requested
+  const [layoutMode, setLayoutMode] = useState<'split' | 'dag' | 'code'>('dag');
 
   // Modal States
   const [isTestCenterOpen, setIsTestCenterOpen] = useState(false);
@@ -90,6 +95,8 @@ export default function App() {
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
+  // Gemini Tranformx Chatbot toggle state (show / hide)
+  const [isGeminiChatOpen, setIsGeminiChatOpen] = useState(false);
 
   // Conversion Complexity Score
   const complexity = useMemo(() => {
@@ -134,6 +141,8 @@ export default function App() {
         onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
         options={options}
         onOptionsChange={setOptions}
+        isGeminiChatOpen={isGeminiChatOpen}
+        onToggleGeminiChat={() => setIsGeminiChatOpen(!isGeminiChatOpen)}
       />
 
       {/* Main Body: GCP Console Sideways Sidebar + Active View Workspace */}
@@ -160,59 +169,24 @@ export default function App() {
           {/* VIEW 2: CONVERTER STUDIO (SECOND TAB) */}
           {activeView === 'studio' && (
             <div className="flex-1 flex flex-col h-full overflow-hidden">
-              
-              {/* Standalone concise bar only if layoutMode is strictly 'code' */}
-              {layoutMode === 'code' && (
-                <div className="h-10 px-3 bg-slate-900 border-b border-slate-800 flex items-center justify-between gap-2 shrink-0 text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-white truncate max-w-[200px]">{currentJob.name}</span>
-                    <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-blue-500/15 text-blue-400 border border-blue-500/30">
-                      {currentJob.jobType}
-                    </span>
-                    <button
-                      onClick={() => {
-                        setShowInspector(true);
-                        setInspectorTab('complexity');
-                      }}
-                      className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${complexity.badgeBg}`}
-                    >
-                      Complexity: {complexity.score}/100
-                    </button>
-                  </div>
-
-                  <div className="flex items-center gap-1.5">
-                    <div className="flex items-center bg-slate-950 rounded p-0.5 border border-slate-800">
-                      <button onClick={() => setLayoutMode('split')} className="px-2 py-0.5 rounded text-[10px] text-slate-400 hover:text-white">Split</button>
-                      <button onClick={() => setLayoutMode('dag')} className="px-2 py-0.5 rounded text-[10px] text-slate-400 hover:text-white">DAG</button>
-                      <button onClick={() => setLayoutMode('code')} className="px-2 py-0.5 rounded text-[10px] bg-orange-500/20 text-orange-400 font-bold">Code</button>
-                    </div>
-                    <button
-                      onClick={() => setShowInspector(!showInspector)}
-                      className={`p-1 rounded text-slate-400 hover:text-white ${showInspector ? 'bg-slate-800 text-white' : ''}`}
-                    >
-                      {showInspector ? <PanelLeftClose className="w-3.5 h-3.5" /> : <PanelLeft className="w-3.5 h-3.5" />}
-                    </button>
-                  </div>
-                </div>
-              )}
-
               {/* Main Workspace Area */}
               <div className="flex-1 flex overflow-hidden relative">
                 
                 {/* Optional Matillion Folder Drawer in Studio */}
                 {showFolderDrawer && (
-                  <aside className="w-72 lg:w-80 shrink-0 h-full overflow-hidden border-r border-slate-800 z-20">
+                  <aside className="w-72 lg:w-80 shrink-0 h-full overflow-hidden border-r border-slate-800 z-20 transition-all duration-300 ease-in-out">
                     <MatillionFolderView
                       currentJob={currentJob}
                       onSelectJob={handleSelectSample}
                       onOpenUpload={() => setIsUploadOpen(true)}
+                      onClose={() => setShowFolderDrawer(false)}
                     />
                   </aside>
                 )}
 
                 {/* Left Inspector Panel (Matillion Details, Complexity, Schema Preview & UC Settings) */}
                 {showInspector && (
-                  <aside className="w-80 lg:w-96 shrink-0 h-full overflow-hidden transition-all duration-200">
+                  <aside className="w-80 lg:w-96 shrink-0 h-full overflow-hidden transition-all duration-300 ease-in-out">
                     <MatillionInspector
                       selectedComponent={selectedComponent}
                       job={currentJob}
@@ -220,8 +194,37 @@ export default function App() {
                       onOptionsChange={setOptions}
                       activeTab={inspectorTab}
                       onActiveTabChange={setInspectorTab}
+                      onClose={() => setShowInspector(false)}
                     />
                   </aside>
+                )}
+
+                {/* Collapsible Slide Window Divider: 1-click collapse when open */}
+                {showInspector && (
+                  <button
+                    onClick={() => setShowInspector(false)}
+                    className="w-3 hover:w-3.5 h-full bg-slate-900 hover:bg-slate-800 border-r border-slate-800 flex items-center justify-center text-slate-500 hover:text-cyan-300 transition-all z-20 cursor-pointer shrink-0 group shadow-sm"
+                    title="Collapse / Hide Menu before DAG"
+                  >
+                    <ChevronLeft className="w-3 h-3 group-hover:-translate-x-0.5 transition-transform" />
+                  </button>
+                )}
+
+                {/* Collapsible Slide Window Rail: 1-click expand when menu is hidden */}
+                {!showInspector && (
+                  <button
+                    onClick={() => setShowInspector(true)}
+                    className="h-full w-7 bg-slate-900 hover:bg-slate-800 border-r border-slate-800 flex flex-col items-center justify-center gap-3 text-slate-400 hover:text-cyan-300 transition-all z-20 group cursor-pointer shadow-lg shrink-0"
+                    title="Show Inspector & Insights Menu (Opens before DAG view)"
+                  >
+                    <div className="w-5 h-5 rounded-full bg-slate-800 group-hover:bg-cyan-500/20 border border-slate-700 group-hover:border-cyan-500/40 flex items-center justify-center transition-colors">
+                      <ChevronRight className="w-3 h-3 text-cyan-400 group-hover:translate-x-0.5 transition-transform" />
+                    </div>
+                    <span className="[writing-mode:vertical-lr] text-[9px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-cyan-300 rotate-180">
+                      Inspector Menu
+                    </span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                  </button>
                 )}
 
                 {/* Center / Right Split View */}
@@ -272,6 +275,7 @@ export default function App() {
                         jobName={currentJob.name}
                         selectedComponent={selectedComponent}
                         targetOutputFormat={options.outputFormat}
+                        onToggleHideCode={() => setLayoutMode('dag')}
                       />
                     </section>
                   )}
@@ -377,6 +381,45 @@ export default function App() {
           setActiveView('studio');
         }}
       />
+
+      {/* GEMINI TRANFORMX CHATBOT (Toggle Feature to Show & Hide) */}
+      <GeminiChatModal
+        isOpen={isGeminiChatOpen}
+        onClose={() => setIsGeminiChatOpen(false)}
+        job={currentJob}
+        options={options}
+        complexity={{
+          score: complexity.score,
+          rating: complexity.level,
+          summary: complexity.summary
+        }}
+      />
+
+      {/* Floating Toggle Button for Gemini Tranformx (Show / Hide toggle) */}
+      <aside aria-label="Gemini Tranformx Assistant Launcher" className="fixed bottom-5 right-5 z-40">
+        <button
+          onClick={() => setIsGeminiChatOpen(!isGeminiChatOpen)}
+          className={`flex items-center gap-2 px-3.5 py-2.5 rounded-full font-bold text-xs shadow-2xl transition-all duration-200 cursor-pointer border ${
+            isGeminiChatOpen
+              ? 'bg-slate-900 hover:bg-slate-800 text-slate-200 border-slate-700 shadow-slate-950/80 hover:text-white'
+              : 'bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white border-cyan-400/40 shadow-cyan-500/25 hover:scale-105'
+          }`}
+          title={isGeminiChatOpen ? 'Hide Gemini Tranformx Chatbot' : 'Open Gemini Tranformx AI Copilot'}
+        >
+          {isGeminiChatOpen ? (
+            <>
+              <EyeOff className="w-4 h-4 text-cyan-400" />
+              <span>Hide Gemini Tranformx</span>
+            </>
+          ) : (
+            <>
+              <Sparkles className="w-4 h-4 text-cyan-200 animate-spin-slow" />
+              <span>Gemini Tranformx</span>
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            </>
+          )}
+        </button>
+      </aside>
 
     </div>
   );

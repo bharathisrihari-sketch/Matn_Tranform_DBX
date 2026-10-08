@@ -113,7 +113,7 @@ export const GcpConsoleSidebar: React.FC<GcpConsoleSidebarProps> = ({
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              GCP Console Menu
+              Migration Menu
             </span>
           </div>
         )}

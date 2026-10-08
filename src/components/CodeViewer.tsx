@@ -13,7 +13,13 @@ import {
   ArrowRightLeft,
   Info,
   CheckCircle2,
-  FileDiff
+  FileDiff,
+  ChevronDown,
+  ChevronUp,
+  ChevronRight,
+  EyeOff,
+  Minimize2,
+  ChevronsDownUp
 } from 'lucide-react';
 import { ConvertedOutput, MatillionComponent } from '../types/matillion';
 import { computeSideBySideDiff } from '../services/diffGenerator';
@@ -23,13 +29,15 @@ interface CodeViewerProps {
   jobName: string;
   selectedComponent: MatillionComponent | null;
   targetOutputFormat?: 'notebook' | 'script' | 'dlt' | 'workflow';
+  onToggleHideCode?: () => void;
 }
 
 export const CodeViewer: React.FC<CodeViewerProps> = ({
   output,
   jobName,
   selectedComponent,
-  targetOutputFormat
+  targetOutputFormat,
+  onToggleHideCode
 }) => {
   const [activeTab, setActiveTab] = useState<'notebook' | 'script' | 'dlt' | 'workflow'>(
     targetOutputFormat || 'notebook'
@@ -41,6 +49,13 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
   const [isDiffMode, setIsDiffMode] = useState(false);
   const [diffBaseFormat, setDiffBaseFormat] = useState<'notebook' | 'script'>('notebook');
   const [filterChangedOnly, setFilterChangedOnly] = useState(false);
+
+  // Dropdown states to save space (Notebook/Format dropdown & Actions/Export dropdown)
+  const [formatDropdownOpen, setFormatDropdownOpen] = useState(false);
+  const [actionsDropdownOpen, setActionsDropdownOpen] = useState(false);
+
+  // Slide window option for sub-header
+  const [isSubHeaderSlideOpen, setIsSubHeaderSlideOpen] = useState(true);
 
   React.useEffect(() => {
     if (targetOutputFormat) {
@@ -122,154 +137,245 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
 
   return (
     <div className="flex flex-col h-full bg-slate-900 border-l border-slate-800">
-      {/* Tab Switcher & Diff Mode Toggle Actions */}
-      <div className="h-12 border-b border-slate-800 bg-slate-950 px-3 sm:px-4 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1 overflow-x-auto scrollbar-none">
+      {/* Tab Switcher & Compact Dropdown Actions (Saves horizontal space) */}
+      <div className="h-11 border-b border-slate-800 bg-slate-950 px-3 flex items-center justify-between gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
           
-          {/* Individual Format Tabs (Active when not in full Diff Mode or used to toggle format) */}
-          <button
-            onClick={() => {
-              setActiveTab('notebook');
-              if (isDiffMode) setDiffBaseFormat('notebook');
-            }}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
-              !isDiffMode && activeTab === 'notebook'
-                ? 'bg-orange-500/20 text-orange-400 border border-orange-500/40 shadow-sm'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-            }`}
-          >
-            <FileCode className="w-3.5 h-3.5 text-orange-400" />
-            <span>Notebook</span>
-          </button>
+          {/* DROPDOWN 1: OUTPUT CODE FORMAT */}
+          <div className="relative">
+            <button
+              onClick={() => {
+                setFormatDropdownOpen(!formatDropdownOpen);
+                setActionsDropdownOpen(false);
+              }}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700/80 transition-colors shadow-sm"
+              title="Select generated output code format"
+            >
+              {activeTab === 'notebook' && <FileCode className="w-3.5 h-3.5 text-orange-400" />}
+              {activeTab === 'script' && <Terminal className="w-3.5 h-3.5 text-amber-400" />}
+              {activeTab === 'dlt' && <Layers className="w-3.5 h-3.5 text-cyan-400" />}
+              {activeTab === 'workflow' && <Cpu className="w-3.5 h-3.5 text-emerald-400" />}
+              <span>
+                Format: <strong className="text-white capitalize">
+                  {activeTab === 'notebook' ? 'Notebook' : activeTab === 'script' ? 'PySpark' : activeTab === 'dlt' ? 'DLT Pipeline' : 'Workflow'}
+                </strong>
+              </span>
+              <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${formatDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
 
-          <button
-            onClick={() => {
-              setActiveTab('script');
-              if (isDiffMode) setDiffBaseFormat('script');
-            }}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
-              !isDiffMode && activeTab === 'script'
-                ? 'bg-orange-500/20 text-orange-400 border border-orange-500/40 shadow-sm'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-            }`}
-          >
-            <Terminal className="w-3.5 h-3.5 text-amber-400" />
-            <span>PySpark Script</span>
-          </button>
+            {formatDropdownOpen && (
+              <div 
+                className="absolute left-0 top-full mt-1.5 w-56 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-1.5 z-40 space-y-1 font-sans"
+                onClick={() => setFormatDropdownOpen(false)}
+              >
+                <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800">
+                  Output Code Format
+                </div>
 
-          <button
-            onClick={() => {
-              setActiveTab('dlt');
-            }}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
-              !isDiffMode && activeTab === 'dlt'
-                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-            }`}
-          >
-            <Layers className="w-3.5 h-3.5 text-cyan-400" />
-            <span>Delta Live Tables (DLT)</span>
-          </button>
+                <button
+                  onClick={() => {
+                    setActiveTab('notebook');
+                    if (isDiffMode) setDiffBaseFormat('notebook');
+                  }}
+                  className={`w-full text-left px-2 py-1.5 rounded-lg text-xs flex items-center justify-between ${
+                    !isDiffMode && activeTab === 'notebook' ? 'bg-orange-500/20 text-orange-300 font-bold' : 'text-slate-300 hover:bg-slate-800'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <FileCode className="w-3.5 h-3.5 text-orange-400" />
+                    <span>Databricks Notebook (.py)</span>
+                  </div>
+                  {activeTab === 'notebook' && !isDiffMode && <Check className="w-3 h-3 text-orange-400" />}
+                </button>
 
-          <button
-            onClick={() => {
-              setActiveTab('workflow');
-              setIsDiffMode(false);
-            }}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
-              !isDiffMode && activeTab === 'workflow'
-                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-sm'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-            }`}
-          >
-            <Cpu className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Workflow JSON</span>
-          </button>
+                <button
+                  onClick={() => {
+                    setActiveTab('script');
+                    if (isDiffMode) setDiffBaseFormat('script');
+                  }}
+                  className={`w-full text-left px-2 py-1.5 rounded-lg text-xs flex items-center justify-between ${
+                    !isDiffMode && activeTab === 'script' ? 'bg-amber-500/20 text-amber-300 font-bold' : 'text-slate-300 hover:bg-slate-800'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Terminal className="w-3.5 h-3.5 text-amber-400" />
+                    <span>PySpark Script (.py)</span>
+                  </div>
+                  {activeTab === 'script' && !isDiffMode && <Check className="w-3 h-3 text-amber-400" />}
+                </button>
 
-          {/* Dedicated Side-by-Side Diff Mode Toggle */}
-          <div className="h-4 w-px bg-slate-800 mx-1 shrink-0" />
+                <button
+                  onClick={() => setActiveTab('dlt')}
+                  className={`w-full text-left px-2 py-1.5 rounded-lg text-xs flex items-center justify-between ${
+                    !isDiffMode && activeTab === 'dlt' ? 'bg-cyan-500/20 text-cyan-300 font-bold' : 'text-slate-300 hover:bg-slate-800'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Layers className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>Delta Live Tables (DLT)</span>
+                  </div>
+                  {activeTab === 'dlt' && !isDiffMode && <Check className="w-3 h-3 text-cyan-400" />}
+                </button>
 
+                <button
+                  onClick={() => {
+                    setActiveTab('workflow');
+                    setIsDiffMode(false);
+                  }}
+                  className={`w-full text-left px-2 py-1.5 rounded-lg text-xs flex items-center justify-between ${
+                    !isDiffMode && activeTab === 'workflow' ? 'bg-emerald-500/20 text-emerald-300 font-bold' : 'text-slate-300 hover:bg-slate-800'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Cpu className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Workflow JSON (job.json)</span>
+                  </div>
+                  {activeTab === 'workflow' && !isDiffMode && <Check className="w-3 h-3 text-emerald-400" />}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Quick Side-by-Side Diff Toggle */}
           <button
             onClick={() => setIsDiffMode(!isDiffMode)}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all border ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold transition-all border ${
               isDiffMode
-                ? 'bg-gradient-to-r from-orange-500/20 to-cyan-500/20 text-white border-cyan-500/50 shadow-sm shadow-cyan-500/10 ring-1 ring-cyan-500/30'
-                : 'bg-slate-900 text-slate-300 border-slate-800 hover:text-white hover:border-slate-700'
+                ? 'bg-gradient-to-r from-orange-500/25 to-cyan-500/25 text-white border-cyan-400 shadow-sm shadow-cyan-500/20 ring-1 ring-cyan-500/30'
+                : 'bg-slate-900 text-slate-300 border-slate-700/80 hover:text-white hover:border-slate-600'
             }`}
-            title="Side-by-side diff comparing standard PySpark vs Delta Live Tables"
+            title="Side-by-side diff comparing PySpark vs Delta Live Tables"
           >
             <ArrowRightLeft className={`w-3.5 h-3.5 ${isDiffMode ? 'text-cyan-400 animate-pulse' : 'text-slate-400'}`} />
             <span>Side-by-Side Diff</span>
-            <span className={`text-[9px] px-1 py-0.2 rounded font-mono ${
-              isDiffMode ? 'bg-cyan-500/30 text-cyan-200' : 'bg-slate-800 text-slate-400'
-            }`}>
-              PySpark ⟷ DLT
-            </span>
+            {isDiffMode && <span className="text-[9px] px-1 py-0.2 rounded bg-cyan-500/30 text-cyan-200 font-mono">ON</span>}
           </button>
         </div>
 
-        {/* Copy & Download Actions */}
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={handleCopy}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition-colors"
-            title="Copy code to clipboard"
-          >
-            {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-            <span>{copied ? 'Copied' : 'Copy'}</span>
-          </button>
+        {/* DROPDOWN 2: ACTIONS & EXPORT + HIDE CODE TOGGLE */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <div className="relative">
+            <button
+              onClick={() => {
+                setActionsDropdownOpen(!actionsDropdownOpen);
+                setFormatDropdownOpen(false);
+              }}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700/80 transition-colors shadow-sm"
+              title="Copy, download and export options"
+            >
+              <span>Actions & Export</span>
+              <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${actionsDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
 
-          <button
-            onClick={handleDownload}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition-colors"
-            title="Download file"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Download</span>
-          </button>
+            {actionsDropdownOpen && (
+              <div 
+                className="absolute right-0 top-full mt-1.5 w-52 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-1.5 z-40 space-y-1 font-sans"
+                onClick={() => setActionsDropdownOpen(false)}
+              >
+                <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800">
+                  Export & Actions
+                </div>
+
+                <button
+                  onClick={handleCopy}
+                  className="w-full text-left px-2 py-1.5 rounded-lg text-xs flex items-center justify-between text-slate-200 hover:bg-slate-800"
+                >
+                  <div className="flex items-center gap-2">
+                    {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
+                    <span>{copied ? 'Copied to Clipboard!' : 'Copy Code'}</span>
+                  </div>
+                  <span className="text-[10px] font-mono text-slate-500">Ctrl+C</span>
+                </button>
+
+                <button
+                  onClick={handleDownload}
+                  className="w-full text-left px-2 py-1.5 rounded-lg text-xs flex items-center justify-between text-slate-200 hover:bg-slate-800"
+                >
+                  <div className="flex items-center gap-2">
+                    <Download className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>Download File</span>
+                  </div>
+                  <span className="text-[10px] font-mono text-slate-500">.py / .json</span>
+                </button>
+
+                <div className="border-t border-slate-800 my-1" />
+
+                <button
+                  onClick={() => setIsDiffMode(!isDiffMode)}
+                  className="w-full text-left px-2 py-1.5 rounded-lg text-xs flex items-center gap-2 text-slate-200 hover:bg-slate-800"
+                >
+                  <ArrowRightLeft className="w-3.5 h-3.5 text-orange-400" />
+                  <span>{isDiffMode ? 'Exit Diff View' : 'Open Side-by-Side Diff'}</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Collapse / Collide icon placed right next to Actions & Export dropdown (Hides Code -> Maximizes DAG) */}
+          {onToggleHideCode && (
+            <button
+              onClick={onToggleHideCode}
+              className="p-1.5 rounded-md border border-slate-800 bg-slate-950 hover:bg-slate-800 text-cyan-400 hover:text-white text-xs transition-colors shadow-sm flex items-center justify-center cursor-pointer"
+              title="Collapse / Collide Databricks Code View (Maximizes DAG)"
+            >
+              <ChevronsDownUp className="w-3.5 h-3.5 text-cyan-400" />
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Diff Mode Control Sub-bar */}
+      {/* Diff Mode Control Sub-bar (With Slide Window Option) */}
       {isDiffMode ? (
-        <div className="px-4 py-2 bg-slate-950 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
-              <FileDiff className="w-3.5 h-3.5 text-cyan-400" />
-              Comparing:
-            </span>
+        <div className="bg-slate-950 border-b border-slate-800 transition-all duration-200">
+          <div className="px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => setIsSubHeaderSlideOpen(!isSubHeaderSlideOpen)}
+                className="text-slate-400 hover:text-white flex items-center gap-1 p-0.5 rounded hover:bg-slate-800"
+                title={isSubHeaderSlideOpen ? 'Collapse comparison options' : 'Expand comparison options'}
+              >
+                <ChevronDown className={`w-3.5 h-3.5 text-cyan-400 transition-transform ${isSubHeaderSlideOpen ? '' : '-rotate-90'}`} />
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1">
+                  <FileDiff className="w-3.5 h-3.5 text-cyan-400" />
+                  Diff Options
+                </span>
+              </button>
 
-            {/* Base Selector */}
-            <div className="flex items-center bg-slate-900 border border-slate-800 rounded p-0.5">
-              <button
-                onClick={() => setDiffBaseFormat('notebook')}
-                className={`px-2 py-0.5 rounded text-[10px] font-medium transition-all ${
-                  diffBaseFormat === 'notebook'
-                    ? 'bg-orange-500/20 text-orange-400 font-bold'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                PySpark Notebook
-              </button>
-              <button
-                onClick={() => setDiffBaseFormat('script')}
-                className={`px-2 py-0.5 rounded text-[10px] font-medium transition-all ${
-                  diffBaseFormat === 'script'
-                    ? 'bg-amber-500/20 text-amber-300 font-bold'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                PySpark Script
-              </button>
+              {isSubHeaderSlideOpen && (
+                <>
+                  {/* Base Selector */}
+                  <div className="flex items-center bg-slate-900 border border-slate-800 rounded p-0.5">
+                    <button
+                      onClick={() => setDiffBaseFormat('notebook')}
+                      className={`px-2 py-0.5 rounded text-[10px] font-medium transition-all ${
+                        diffBaseFormat === 'notebook'
+                          ? 'bg-orange-500/20 text-orange-400 font-bold'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      PySpark Notebook
+                    </button>
+                    <button
+                      onClick={() => setDiffBaseFormat('script')}
+                      className={`px-2 py-0.5 rounded text-[10px] font-medium transition-all ${
+                        diffBaseFormat === 'script'
+                          ? 'bg-amber-500/20 text-amber-300 font-bold'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      PySpark Script
+                    </button>
+                  </div>
+
+                  <span className="text-slate-600 font-mono">VS</span>
+
+                  <span className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[10px] font-bold flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-cyan-400" />
+                    Delta Live Tables (DLT)
+                  </span>
+                </>
+              )}
             </div>
-
-            <span className="text-slate-600 font-mono">VS</span>
-
-            <span className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[10px] font-bold flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-cyan-400" />
-              Delta Live Tables (DLT)
-            </span>
-          </div>
 
           {/* Quick Filter & Syntax Legend */}
           <div className="flex items-center gap-3">
@@ -300,6 +406,7 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({
             </div>
           </div>
         </div>
+      </div>
       ) : (
         /* Standard Single-File Search Header */
         <div className="px-4 py-2 bg-slate-900/60 border-b border-slate-800 flex items-center justify-between text-xs">
